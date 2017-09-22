@@ -1,4 +1,4 @@
-ANTLR_JAR = /usr/local/lib/antlr-4.5-complete.jar
+ANTLR_JAR = /usr/local/lib/antlr-4.5.3-complete.jar
 
 %: all
 
