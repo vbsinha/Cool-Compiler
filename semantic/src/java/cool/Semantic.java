@@ -9,6 +9,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Vector;
+import java.util.Map.Entry;
 
 import cool.AST.class_;
 
@@ -25,10 +26,64 @@ public class Semantic{
 /*
 	Don't change code above this line
 */
+
+    ClassTable classTable = new ClassTable();
+    ScopeTable<AST.attr> scopeTable = new ScopeTable<AST.attr>();
+    String filename;
 	public Semantic(AST.program program){
 		//Write Semantic analyzer code here
 		
 		check_cycles(program.classes);
+		
+		for(Error e : classTable.errors) {
+			reportError(e.fname, e.line, e.err);
+		}
+		
+		for (AST.class_ c : program.classes) {
+		    filename = c.filename;
+		    scopeTable.enterScope();
+		    scopeTable.insert("self", new AST.attr("self", c.name, new AST.no_expr(c.lineNo), c.lineNo));
+		    for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet())
+		        scopeTable.insert(entry.getKey(), entry.getValue());
+		    //scopeTable.insertAll(classTable.getAttrs(e.name));
+		    for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet()){
+		        AST.attr attr = entry.getValue();
+		        if(attr.value.getClass() != AST.no_expr.class) {
+			        ProcessExpr(attr.value);
+			        if(classTable.isAncestor(attr.value.type, attr.typeid) == false) {
+				        reportError(c.filename, attr.value.lineNo, "Declared type " + attr.typeid + " of attribute "
+						        + attr.name + " is not an ancestor of the infered type " + attr.value.type);
+			        }
+		        }
+		    }
+		    
+		    for (Entry<String, AST.method> entry : classTable.classinfos.get(c.name).methodlist.entrySet()) {
+		        AST.method m = entry.getValue();
+		        scopeTable.enterScope();
+		        for(AST.formal e : m.formals) {
+			        scopeTable.insert(e.name, new AST.attr(e.name, e.typeid, new AST.no_expr(e.lineNo), e.lineNo));
+	            }
+	            ProcessExpr(m.body);
+	            if (classTable.isAncestor(m.body.type, m.typeid)) {
+	                reportError(c.filename, m.body.lineNo, "Return type " + m.typeid + " of method "
+						        + m.name + " is not an ancestor of the infered method body type " + m.body.type);
+	            }
+		        scopeTable.exitScope();
+		        
+		    }
+		    
+		    scopeTable.exitScope();
+		}
+		
+		ClassInfo main_class = classTable.classinfos.get("Main");
+		if(main_class == null)
+			reportError(filename, 1, "Program does not contain class Main");
+		else if(main_class.methodlist.containsKey("main") == false)
+			reportError(filename, 1, "Main class does not contain main method");
+	}
+	
+	private void ProcessExpr(AST.expression expr) {
+	    
 	}
 	
 	private void check_cycles(List <AST.class_> classes){
@@ -103,6 +158,44 @@ public class Semantic{
 		}
 		
 		if (cycle)
-		    System.exit(1);	    
+		    System.exit(1);
+		    
+		q.clear();
+		q.offer("Object");
+		
+		while(q.isEmpty() == false){
+		    String currClass = q.poll();
+		    if (currClass != "Object" && currClass != "IO"){
+		        classTable.insert(astClasses.get(currClass));
+		    }
+		    for (String child : graph.get(currClass))
+		        q.offer(child);
+		}	    
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
