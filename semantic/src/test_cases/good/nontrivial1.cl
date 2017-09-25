@@ -97,7 +97,7 @@ class Math inherits IO{
         };
 };
 class Main inherits Math{
-        main() : SELF_TYPE{
+        main() : Object{
                 let a : Int in{
                         --test for all funs to verify they are working
                         out_string("gcd of 34 and 6 : ");

@@ -13,7 +13,7 @@ int main(){
 
 -- Program to calculate n!
 class Main inherits IO {
-        main(): SELF_TYPE {
+        main(): Object {
                 (let n : Int , fact : Int <- 1 in {
                         out_string("Enter a whole number <11 \n");
                         n <- in_int();

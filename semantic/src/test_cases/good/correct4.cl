@@ -1,6 +1,6 @@
 -- program  for custom operators > and >=
 class Main inherits IO {
-        main(): SELF_TYPE {
+        main(): Object {
                 (let a : Int, b : Int in{
                         out_string("Please enter 2 integers \n");               --take 2 numbers as ip
                         a <- in_int();

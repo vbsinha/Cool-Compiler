@@ -38,7 +38,7 @@ class Frac inherits IO{
                 a - b*(a/b)
         };
         --Function to add 2 fractions
-        add(f : Frac): SELF_TYPE {
+        add(f : Frac): Object {
                 let g : Int in{
                         num <- num*f.getDenominator() + f.getNumerator()*den;
                         den <- den * f.getDenominator();
@@ -55,7 +55,7 @@ class Frac inherits IO{
                 fi
         };
         --Function to sub 2 fractions if first fraction is less than second fraction - undefined behaviour
-        sub(f : Frac): SELF_TYPE {
+        sub(f : Frac): Object {
                 let g : Int in{
                         if gteq(f) then{
                                 num <- num*f.getDenominator() - f.getNumerator()*den;
@@ -70,7 +70,7 @@ class Frac inherits IO{
                 }
         };
         --Funcition to multiply
-        mul(f : Frac) : SELF_TYPE{
+        mul(f : Frac) : Object{
                 let g : Int in{
                         num <- num * f.getNumerator();
                         den <- den * f.getDenominator();
@@ -84,7 +84,7 @@ class Frac inherits IO{
                 }
         };
         --Funcition to divide division by 0 not defined
-        div(f : Frac) : SELF_TYPE{
+        div(f : Frac) : Object{
                 let g : Int in{
                         num <- num * f.getDenominator();
                         den <- den * f.getNumerator();
@@ -99,7 +99,7 @@ class Frac inherits IO{
                 }
         };
         --fn to print the fraction
-        show(): SELF_TYPE{
+        show(): Object{
                 {
                         out_int(num);
                         out_string("/");
@@ -109,7 +109,7 @@ class Frac inherits IO{
         };
 };
 class Main inherits Frac{
-        main() : SELF_TYPE{
+        main() : Object{
                 --take ip as 2 fraction and perform all operation
                 let f : Frac <- new Frac, g : Frac <- new Frac ,forg : Frac <- new Frac ,n1 : Int , d1 : Int , n2 : Int, d2 : Int in{
                         out_string("Please enter the numerator and denominator for fraction 1 \n");

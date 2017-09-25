@@ -1,6 +1,6 @@
 -- Takes the full name and outputs abriged name
 class Main inherits IO{
-        main(): SELF_TYPE {
+        main(): Object {
                 let fr_name : String, mid_name : String, lt_name : String, abr_name : String in {
                         out_string("Enter Firstname : ");                             -- Get first name
                         fr_name <- in_string();

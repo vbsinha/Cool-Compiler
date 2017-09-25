@@ -1,6 +1,6 @@
 --Implementation of and or and xor (since they are not directly avaliable)
 class Main inherits IO {
-        main(): SELF_TYPE {
+        main(): Object {
                 (let c : Bool in{
                         -- Create a table for the 4 possible combinations
                         --And for each combination populate the table

@@ -1,6 +1,6 @@
 -- calculate the first n fibo numbers
 class Main inherits IO {
-        main(): SELF_TYPE {
+        main(): Object {
                 (let a : Int, b : Int, n : Int in{
                         out_string("Please enter the n (>0 and a natural number <25) upto which you want to calculate fibonacci numbers \n");
                         out_string("The fibonacci series is assumed to begin with index 0 \n");
