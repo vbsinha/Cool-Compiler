@@ -83,8 +83,101 @@ public class Semantic{
 	}
 	
 	private void ProcessExpr(AST.expression expr) {
-	    
+	    if(expr.getClass() == AST.assign.class)
+			ProcessNode((AST.assign)expr);
+		else if(expr.getClass() == AST.static_dispatch.class)
+			ProcessNode((AST.static_dispatch)expr);
+		else if(expr.getClass() == AST.dispatch.class)
+			ProcessNode((AST.dispatch)expr);
+		else if(expr.getClass() == AST.cond.class)
+			ProcessNode((AST.cond)expr);
+		else if(expr.getClass() == AST.loop.class)
+			ProcessNode((AST.loop)expr);
+		else if(expr.getClass() == AST.block.class)
+			ProcessNode((AST.block)expr);
+		else if(expr.getClass() == AST.let.class)
+			ProcessNode((AST.let)expr);
+		else if(expr.getClass() == AST.typcase.class)
+			ProcessNode((AST.typcase)expr);
+		else if(expr.getClass() == AST.new_.class)
+			ProcessNode((AST.new_)expr);
+		else if(expr.getClass() == AST.isvoid.class)
+			ProcessNode((AST.isvoid)expr);
+		else if(expr.getClass() == AST.plus.class)
+			//ProcessNode((AST.plus)expr);
+			plus = (AST.plus)expr;
+			plus.type = checkBinary(plus.e1, plus.e2, plus.lineNo, '+');
+		else if(expr.getClass() == AST.sub.class)
+			//ProcessNode((AST.sub)expr);
+			sub = (AST.sub)expr;
+			sub.type = checkBinary(sub.e1, sub.e2, sub.lineNo, '-');
+		else if(expr.getClass() == AST.mul.class)
+			//ProcessNode((AST.mul)expr);
+			mul = (AST.mul)expr;
+			mul.type = checkBinary(mul.e1, mul.e2, mul.lineNo, '-');
+		else if(expr.getClass() == AST.divide.class)
+			//ProcessNode((AST.divide)expr);
+			divide = (AST.divide)expr;
+			divide.type = checkBinary(divide.e1, divide.e2, divide.lineNo, '-');
+		else if(expr.getClass() == AST.comp.class)
+			ProcessNode((AST.comp)expr);
+		else if(expr.getClass() == AST.lt.class)
+			//ProcessNode((AST.lt)expr);
+			lt = (AST.lt)expr;
+			lt.type = checkBinary(lt.e1, lt.e2, lt.lineNo, '-');
+		else if(expr.getClass() == AST.leq.class)
+			//ProcessNode((AST.leq)expr);
+			leq = (AST.leq)expr;
+			leq.type = checkBinary(leq.e1, leq.e2, leq.lineNo, '-');
+		else if(expr.getClass() == AST.eq.class)
+			ProcessNode((AST.eq)expr);
+		else if(expr.getClass() == AST.neg.class)
+			ProcessNode((AST.neg)expr);
+		else if(expr.getClass() == AST.object.class)
+			ProcessNode((AST.object)expr);
+		else if(expr.getClass() == AST.int_const.class)
+			ProcessNode((AST.int_const)expr);
+		else if(expr.getClass() == AST.string_const.class)
+			ProcessNode((AST.string_const)expr);
+		else if(expr.getClass() == AST.bool_const.class)
+			ProcessNode((AST.bool_const)expr);
 	}
+	
+	/*private void ProcessNode(AST.plus plus) {
+	    plus.type = checkBinary(plus.e1, plus.e2, plus.lineNo, '+');
+		ProcessNode(plus.e1);
+		ProcessNode(plus.e2);
+		if(plus.e1.type.equals("Int") == false || plus.e2.type.equals("Int") == false) {
+			reportError(filename, plus.lineNo, "non-Int arguments: " + plus.e1.type + " + " + plus.e2.type);
+		}
+		plus.type = "Int";
+	}*/
+	
+	private String checkBinary(AST.expression e1, AST.expression e2, int lineNo, char operator){
+	    ProcessExpr(e1);
+		ProcessExpr(e2);
+		if(e1.type.equals("Int") == false || e2.type.equals("Int") == false) {
+			reportError(filename, lineNo, "Non-Int argument detected : " + e1.type + " " + operator + " " + e2.type);
+		}
+		return "Int";
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	private void check_cycles(List <AST.class_> classes){
 	    
