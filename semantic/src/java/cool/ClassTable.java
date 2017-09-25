@@ -143,4 +143,11 @@ public class ClassTable{
         if (child == ancestor) return true;
         return isAncestor(classinfos.get(child).parent, ancestor);
     }
+
+    String commonAncestor(String class1, String class2) {
+    	if (class1.equals(class2)) return class1;
+    	if (classinfos.get(class1).depth < classinfos.get(class2).depth)
+    		return commonAncestor(class2, class1);
+    	return commonAncestor(classinfos.get(class1).parent, class2);
+    }
 }

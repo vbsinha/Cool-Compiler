@@ -1,5 +1,9 @@
 package cool;
 import java.util.List;
+import java.util.Arrays;
+import java.util.List;
+import java.util.HashMap;
+
 public class AST{
 	public static class ASTNode {
 		int lineNo;
@@ -36,6 +40,9 @@ public class AST{
 		String getString(String space){
 			return "";
 		};
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			errors.add(new Error(null, lineNo, "This is occur never"));
+		}
 	}
 	public static class no_expr extends expression {
 		public no_expr(int l){
@@ -54,6 +61,9 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_bool\n"+space+sp+(value?"1":"0")+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			type = "Bool";
+		}
 	}
 	public static class string_const extends expression{
 		public String value;
@@ -63,6 +73,9 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_string\n"+space+sp+"\""+escapeSpecialCharacters(value)+"\""+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			type = "String";
 		}
 	}
 
@@ -75,6 +88,9 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_int\n"+space+sp+value+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			type = "Int";
+		}
 	}
 
 	public static class object extends expression{
@@ -86,6 +102,13 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_object\n"+space+sp+name+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			attr a = scopeTable.lookUpGlobal(name);
+			if (a == null) {
+				errors.add(new Error(null, lineNo, "Identifier " + name + " not declared"));
+				type = "Object";
+			} else type = a.typeid;
+		}
 	}
 	public static class comp extends expression{
 		public expression e1;
@@ -95,6 +118,13 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_comp\n"+e1.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Bool") == false) {
+				errors.add(new Error(null, lineNo, "Bool complement applied on type " + e1.type));
+			}
+			type = "Bool";
 		}
 	}
 	public static class eq extends expression{
@@ -107,6 +137,16 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_eq\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			List<String> basicTypes = Arrays.asList("String", "Int", "Bool");
+			if (basicTypes.contains(e1.type) || basicTypes.contains(e2.type)) {
+				if (e1.type.equals(e2.type) == false) 
+					errors.add(new Error(null, lineNo, "Cannot compare " + e1.type + " and " + e2.type));
+			}
+			type = "Bool";
 		}
 	}
 	
@@ -122,6 +162,17 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_leq\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e1.type));
+			}
+			if (e2.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e2.type));
+			}
+			type = "Bool";
+		}
 	}
 
 	public static class lt extends expression{
@@ -135,6 +186,17 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_lt\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e1.type));
+			}
+			if (e2.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e2.type));
+			}
+			type = "Bool";
+		}
 	}
 	public static class neg extends expression{
 		public expression e1;
@@ -144,6 +206,13 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_neg\n"+e1.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int argument "+e1.type));
+			}
+			type = "Int";
 		}
 	}
 	public static class divide extends expression{
@@ -157,6 +226,17 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_divide\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e1.type));
+			}
+			if (e2.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e2.type));
+			}
+			type = "Int";
+		}
 	}
 	public static class mul extends expression{
 		public expression e1;
@@ -168,6 +248,17 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_mul\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e1.type));
+			}
+			if (e2.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e2.type));
+			}
+			type = "Int";
 		}
 	}
 	public static class sub extends expression{
@@ -181,6 +272,17 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_sub\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e1.type));
+			}
+			if (e2.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e2.type));
+			}
+			type = "Int";
+		}
 	}
 	public static class plus extends expression{
 		public expression e1;
@@ -193,6 +295,17 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_plus\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			e2.handle(errors, scopeTable, classTable);
+			if (e1.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e1.type));
+			}
+			if (e2.type.equals("Int") == false) {
+				errors.add(new Error(null, lineNo, "non-Int first argument "+e2.type));
+			}
+			type = "Int";
+		}
 	}
 	public static class isvoid extends expression{
 		public expression e1;
@@ -203,6 +316,9 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_isvoid\n"+e1.getString(space+sp)+"\n"+space+": "+type;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			type = "Bool";
+		}
 	}
 	public static class new_ extends expression{
 		public String typeid;
@@ -212,6 +328,14 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_new\n"+space+sp+typeid+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			ClassInfo c = classTable.classinfos.get(typeid);
+			if (c == null) {
+				errors.add(new Error(null, lineNo, "Undefined class " + typeid));
+				type = "Object";
+			}
+			type = typeid;
 		}
 	}
 	public static class assign extends expression{
@@ -224,6 +348,16 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_assign\n"+space+sp+name+"\n"+e1.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			e1.handle(errors, scopeTable, classTable);
+			attr a = scopeTable.lookUpGlobal(name);
+			if (a == null) {
+				errors.add(new Error(null, lineNo, "Undeclared varaible "+name));
+			} else if (classTable.isAncestor(e1.type, a.typeid) == false) {
+				errors.add(new Error(null, lineNo, a.typeid + " does not conform to " + e1.type));
+			}
+			type = e1.type; // TODO Recheck
 		}
 	}
 	public static class block extends expression{
@@ -240,6 +374,11 @@ public class AST{
 			str+=space+": "+type;
 			return str;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			for (expression e : l1)
+				e.handle(errors, scopeTable, classTable);
+			type = l1.get(l1.size() - 1).type;
+		}
 	}
 	public static class loop extends expression{
 		public expression predicate;
@@ -251,6 +390,14 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_loop\n"+predicate.getString(space+sp)+"\n"+body.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			predicate.handle(errors, scopeTable, classTable);
+			if (predicate.type.equals("Bool") == false) {
+				errors.add(new Error(null, lineNo, "Condition of loop is not of type Bool"));
+			}
+			body.handle(errors, scopeTable, classTable);
+			type = "Object";
 		}
 	}
 	public static class cond extends expression{
@@ -265,6 +412,15 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_cond\n"+predicate.getString(space+sp)+"\n"+ifbody.getString(space+sp)+"\n"+elsebody.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			predicate.handle(errors, scopeTable, classTable);
+			if (predicate.type.equals("Bool") == false) {
+				errors.add(new Error(null, lineNo, "Condition of if is not of type Bool"));
+			}
+			ifbody.handle(errors, scopeTable, classTable);
+			elsebody.handle(errors, scopeTable, classTable);
+			type = classTable.commonAncestor(ifbody.type, elsebody.type);
 		}
 	}
 	public static class let extends expression{
@@ -281,6 +437,19 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_let\n"+space+sp+name+"\n"+space+sp+typeid+"\n"+value.getString(space+sp)+"\n"+body.getString(space+sp)+"\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			if (value instanceof no_expr == false) {
+				value.handle(errors, scopeTable, classTable);
+				if (classTable.isAncestor(value.type, typeid) == false) {
+					errors.add(new Error(null, lineNo, "Inferred type "+value.type+" does not conform to "+typeid));
+				}
+			}
+			scopeTable.enterScope();
+			scopeTable.insert(name, new attr(name, typeid, value, lineNo));
+			body.handle(errors, scopeTable, classTable);
+			type = body.type;
+			scopeTable.exitScope();
 		}
 	}
 	public static class dispatch extends expression{
@@ -301,6 +470,36 @@ public class AST{
 			}
 			str+=space+sp+")\n"+space+": "+type;
 			return str;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			method m = null;
+			type = "Object";
+			caller.handle(errors, scopeTable, classTable);
+			for (expression e : actuals) {
+				e.handle(errors, scopeTable, classTable);
+			}
+			ClassInfo c = classTable.classinfos.get(caller.type);
+			if (c == null) {
+				errors.add(new Error(null, lineNo, "Undefined class " + caller.type));
+			} else {
+				if (c.methodlist.containsKey(name)) {
+					m = c.methodlist.get(name);
+					if (actuals.size() != m.formals.size())
+						errors.add(new Error(null, lineNo, m.name+" called with wrong number of arguments"));
+					else {
+						for (int i=0; i<actuals.size(); ++i) {
+							String act = actuals.get(i).type;
+							String form = m.formals.get(i).typeid;
+							if (classTable.isAncestor(act, form) == false) {
+								errors.add(new Error(null, lineNo, act+" does not conform to "+form));
+							}
+						}
+					}
+					type = m.typeid;
+				} else {
+					errors.add(new Error(null, lineNo, "dispatch to Undefined method "+name));
+				}
+			}
 		}
 	}
 	public static class static_dispatch extends expression{
@@ -324,7 +523,39 @@ public class AST{
                         str+=space+sp+")\n"+space+": "+type;
                         return str;
                 }
-        }
+        void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			method m = null;
+			type = "Object";
+			caller.handle(errors, scopeTable, classTable);
+			for (expression e : actuals) {
+				e.handle(errors, scopeTable, classTable);
+			}
+			ClassInfo c = classTable.classinfos.get(typeid);
+			if (c == null) {
+				errors.add(new Error(null, lineNo, "Static dispatch to undefined class " + typeid));
+			} else if (classTable.isAncestor(caller.type, typeid) == false) {
+				errors.add(new Error(null, lineNo, caller.type+" does not conform to "+typeid));
+			} else {
+				if (c.methodlist.containsKey(name)) {
+					m = c.methodlist.get(name);
+					if (actuals.size() != m.formals.size())
+						errors.add(new Error(null, lineNo, m.name+" called with wrong number of arguments"));
+					else {
+						for (int i=0; i<actuals.size(); ++i) {
+							String act = actuals.get(i).type;
+							String form = m.formals.get(i).typeid;
+							if (classTable.isAncestor(act, form) == false) {
+								errors.add(new Error(null, lineNo, act+" does not conform to "+form));
+							}
+						}
+					}
+					type = m.typeid;
+				} else {
+					errors.add(new Error(null, lineNo, "Static dispatch to undefined method "+name));
+				}
+			}
+		}
+    }
 	public static class typcase extends expression{
 		public expression predicate;
 		public List<branch> branches;
@@ -340,6 +571,32 @@ public class AST{
 			}
 			str += space+": "+type;
 			return str;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			predicate.handle(errors, scopeTable, classTable);
+			for (branch e : branches) {
+				scopeTable.enterScope();
+				ClassInfo c = classTable.classinfos.get(e.type);
+				if (c == null) {
+					errors.add(new Error(null, lineNo, "Undefined class "+e.type));
+					scopeTable.insert(e.name, new attr(e.name, "Object", e.value, e.lineNo));
+				} else {
+					scopeTable.insert(e.name, new attr(e.name, e.type, e.value, e.lineNo));
+				}
+				e.value.handle(errors, scopeTable, classTable);
+				scopeTable.exitScope();
+			}
+			HashMap<String, Boolean> branchTypes = new HashMap<>();
+			String t = branches.get(0).value.type;
+
+			for (branch br : branches) {
+				if (branchTypes.containsKey(br.type) == false)
+					branchTypes.put(br.type, true);
+				else
+					errors.add(new Error(null, lineNo, br.type+" is multiply branched in case statement"));
+				t = classTable.commonAncestor(t, br.value.type);
+			}
+			type = t;
 		}
 	}
 	public static class branch extends ASTNode {
