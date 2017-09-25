@@ -1,6 +1,8 @@
 package cool;
 import java.util.HashMap;
 
+// ClassInfo Class to maintain parent, depth, attribute list and method list for a class
+// Depth in the tree is distance between Object node and this class in inheritance tree of the graph
 public class ClassInfo {
 	public String parent = null;
 	public int depth = 0;

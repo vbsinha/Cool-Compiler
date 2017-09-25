@@ -45,6 +45,7 @@ public class Semantic{
 		// Report the errors found while checking for cycles
 		reportErrors(classTable.errors);
 
+		// For all classes, add self to scope, type annotate method and attributes
 		for (AST.class_ c : program.classes) {
 			filename = c.filename;
 			scopeTable.enterScope();
@@ -52,14 +53,18 @@ public class Semantic{
 			for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet())
 				scopeTable.insert(entry.getKey(), entry.getValue());
 		   	List<Error> errors = new ArrayList<>();
+			// Type annotate the features of the class
 			c.handle(errors, scopeTable, classTable);
+			// Report the errors found
 			reportErrors(errors);
 			scopeTable.exitScope();
 		}
 
+		// Check if class Main is defined
 		ClassInfo main_class = classTable.classinfos.get("Main");
 		if(main_class == null)
 			reportError(filename, 1, "Program does not contain class Main");
+		// Check if class Main has method main
 		else if(main_class.methodlist.containsKey("main") == false)
 			reportError(filename, 1, "Main class does not contain main method");
 	}
@@ -83,26 +88,30 @@ public class Semantic{
 		List <String> inherit = Arrays.asList("String", "Int", "Bool");
 
 		for (AST.class_ c : classes){
-			if (classNames.contains(c.name)){
+			if (classNames.contains(c.name)) { // Case when class is redefined
 				reportError(c.filename, c.lineNo, "Class "+c.name+" has been redefined.");
 				System.exit(1);
 			}
-			else if (redef.contains(c.name)){
+			else if (redef.contains(c.name)) { // Case when basic class is redefined
 				reportError(c.filename, c.lineNo, "Class "+c.name+" can not be redefined.");
 				System.exit(1);
 			}
-			else if (inherit.contains(c.parent)){
+			else if (inherit.contains(c.parent)) { // Case when class is inherited from String, Int or Bool
 				reportError(c.filename, c.lineNo, "Class "+c.parent+" can not be inherited.");
 				System.exit(1);
 			}
-			else{
+			else {
 				classNames.add(c.name);
 				graph.put(c.name, new ArrayList <String> ());
 				astClasses.put(c.name, c);
 			}
 		}
 
+		// Add edge from Object to IO in the graph
+		// IO is inherited from Object
+		// String, Int, Bool are not added as no function inherits from them
 		graph.get("Object").add("IO");
+		// Check if parents of the classes exits and add edges from parent to child
 		for (AST.class_ c : classes){
 			if (classNames.contains(c.parent) == false){
 				reportError(c.filename, c.lineNo, "Class "+c.parent+" has not been defined.");
@@ -111,16 +120,19 @@ public class Semantic{
 			graph.get(c.parent).add(c.name);
 		}
 
-		ArrayList <String> visitedClasses = new ArrayList <String> ();
-		Queue <String> q = new LinkedList<String>();
+		// We perform a BFS on the graph and check for inheritence cycle in the graph
+		ArrayList <String> visitedClasses = new ArrayList<>(); // Class that have been visited while doing BFS
+		Queue <String> q = new LinkedList<String>(); // Queue reuired for BFS
 
 		boolean cycle = false;
-		for (String s : classNames){
-			if (visitedClasses.contains(s) == false){
-				q.offer(s);
+		// For BFS we start from every node so as to check independent cycles that might have formed
+		for (String s : classNames) {
+			if (visitedClasses.contains(s) == false) {
+				q.offer(s); // Add root Class
 				while(q.isEmpty() == false){
 					String c = q.poll();
 					for (String child : graph.get(c)){
+						// If atleast one child is already visited then there is a cycle
 						if (visitedClasses.contains(child)){
 							AST.class_ cClass = astClasses.get(c);
 							reportError(cClass.filename, cClass.lineNo, "Class "+child+" is involved in a cycle.");
@@ -140,7 +152,7 @@ public class Semantic{
 
 		q.clear();
 		q.offer("Object");
-
+		// Add classes from the tree (since no cycles are found) to the classTable
 		while(q.isEmpty() == false){
 			String currClass = q.poll();
 			if (currClass != "Object" && currClass != "IO"){

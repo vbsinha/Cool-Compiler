@@ -125,16 +125,23 @@ public class ClassTable{
 		classinfos.put(c.name, currClass);
 	}
 
+	// Check if given ancestor class is ancestor of the given child class
 	boolean isAncestor(String child, String ancestor){
+		// If child is null then there is nosense for ancestor
 		if (child == null) return false;
+		// Ancestor relation is symmetric relation
 		if (child.equals(ancestor)) return true;
+		// Recursively check if ancestor is ancestor for child's parent
 		return isAncestor(classinfos.get(child).parent, ancestor);
 	}
 
+	// Find the least common ancestor of class1 and class2
 	String commonAncestor(String class1, String class2) {
+		// If both are equal then itself is least common ancestor
 		if (class1.equals(class2)) return class1;
 		if (classinfos.get(class1).depth < classinfos.get(class2).depth)
 			return commonAncestor(class2, class1);
+		// Recursively find least common ancestor
 		return commonAncestor(classinfos.get(class1).parent, class2);
 	}
 }
