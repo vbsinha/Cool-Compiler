@@ -41,6 +41,7 @@ public class AST{
 		String getString(String space){
 			return "";
 		};
+		// An abstract handle function that will be inherited by all subclasses
 		abstract void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable);
 	}
 	public static class no_expr extends expression {
@@ -105,6 +106,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_object\n"+space+sp+name+"\n"+space+": "+type;
 		}
+		// Return the type of the object
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			attr a = scopeTable.lookUpGlobal(name);
 			if (a == null) {
@@ -122,6 +124,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_comp\n"+e1.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// CHeck if comaprision is of type bool return bool
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			if (e1.type.equals("Bool") == false) {
@@ -141,6 +144,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_eq\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if only String, Int or Bool are comapared. Return boool
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -165,6 +169,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_leq\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operands are int, return bool
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -189,6 +194,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_lt\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operands are int, return bool
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -210,6 +216,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_neg\n"+e1.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operand if Int, return Int
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			if (e1.type.equals("Int") == false) {
@@ -229,6 +236,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_divide\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operands are int, return Int
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -252,6 +260,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_mul\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operands are int, return Int
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -275,6 +284,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_sub\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operands are int, return Int
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -298,6 +308,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_plus\n"+e1.getString(space+sp)+"\n"+e2.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Check if operands are int, return Int
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			e2.handle(errors, scopeTable, classTable);
@@ -319,6 +330,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_isvoid\n"+e1.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Return bool
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			type = "Bool";
 		}
@@ -332,6 +344,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_new\n"+space+sp+typeid+"\n"+space+": "+type;
 		}
+		// Return the type of the newly created object
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			ClassInfo c = classTable.classinfos.get(typeid);
 			if (c == null) {
@@ -351,6 +364,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_assign\n"+space+sp+name+"\n"+e1.getString(space+sp)+"\n"+space+": "+type;
 		}
+		//  CHeck if types conform
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			e1.handle(errors, scopeTable, classTable);
 			attr a = scopeTable.lookUpGlobal(name);
@@ -359,7 +373,7 @@ public class AST{
 			} else if (classTable.isAncestor(e1.type, a.typeid) == false) {
 				errors.add(new Error(null, lineNo, a.typeid + " does not conform to " + e1.type));
 			}
-			type = e1.type; // TODO Recheck
+			type = e1.type;
 		}
 	}
 	public static class block extends expression{
@@ -376,6 +390,7 @@ public class AST{
 			str+=space+": "+type;
 			return str;
 		}
+		// Return the last type for a block
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			for (expression e : l1)
 				e.handle(errors, scopeTable, classTable);
@@ -393,6 +408,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_loop\n"+predicate.getString(space+sp)+"\n"+body.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Handle loop's body and return "Object"
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			predicate.handle(errors, scopeTable, classTable);
 			if (predicate.type.equals("Bool") == false) {
@@ -415,6 +431,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_cond\n"+predicate.getString(space+sp)+"\n"+ifbody.getString(space+sp)+"\n"+elsebody.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// Handle if-else body and return commonAncestor
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			predicate.handle(errors, scopeTable, classTable);
 			if (predicate.type.equals("Bool") == false) {
@@ -440,6 +457,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_let\n"+space+sp+name+"\n"+space+sp+typeid+"\n"+value.getString(space+sp)+"\n"+body.getString(space+sp)+"\n"+space+": "+type;
 		}
+		// handle let and Scope properly
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			if (value instanceof no_expr == false) {
 				value.handle(errors, scopeTable, classTable);
@@ -473,6 +491,7 @@ public class AST{
 			str+=space+sp+")\n"+space+": "+type;
 			return str;
 		}
+		// For dispatch
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			method m = null;
 			type = "Object";
@@ -481,14 +500,17 @@ public class AST{
 			for (expression e : actuals) {
 				e.handle(errors, scopeTable, classTable);
 			}
+			// Undefined class
 			if (c == null) {
 				errors.add(new Error(null, lineNo, "Undefined class " + caller.type));
 			} else {
 				if (c.methodlist.containsKey(name)) {
 					m = c.methodlist.get(name);
+					// wrong number of arguments
 					if (actuals.size() != m.formals.size())
 						errors.add(new Error(null, lineNo, m.name+" called with wrong number of arguments"));
 					else {
+					    // Parameter conform types?
 						for (int i=0; i<actuals.size(); ++i) {
 							String act = actuals.get(i).type;
 							String form = m.formals.get(i).typeid;
@@ -499,6 +521,7 @@ public class AST{
 					}
 					type = m.typeid;
 				} else {
+				    // Method not found
 					errors.add(new Error(null, lineNo, "dispatch to Undefined method "+name));
 				}
 			}
@@ -525,6 +548,7 @@ public class AST{
                         str+=space+sp+")\n"+space+": "+type;
                         return str;
                 }
+        // For static dispatch
         void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			method m = null;
 			type = "Object";
@@ -533,6 +557,7 @@ public class AST{
 			for (expression e : actuals) {
 				e.handle(errors, scopeTable, classTable);
 			}
+			// Undefined class
 			if (c == null) {
 				errors.add(new Error(null, lineNo, "Static dispatch to undefined class " + typeid));
 			} else if (classTable.isAncestor(caller.type, typeid) == false) {
@@ -540,9 +565,11 @@ public class AST{
 			} else {
 				if (c.methodlist.containsKey(name)) {
 					m = c.methodlist.get(name);
+					// wrong number of arguments
 					if (actuals.size() != m.formals.size())
 						errors.add(new Error(null, lineNo, m.name+" called with wrong number of arguments"));
 					else {
+					    // Parameter conform types?
 						for (int i=0; i<actuals.size(); ++i) {
 							String act = actuals.get(i).type;
 							String form = m.formals.get(i).typeid;
@@ -553,6 +580,7 @@ public class AST{
 					}
 					type = m.typeid;
 				} else {
+				    // Method not found
 					errors.add(new Error(null, lineNo, "Static dispatch to undefined method "+name));
 				}
 			}
@@ -574,6 +602,7 @@ public class AST{
 			str += space+": "+type;
 			return str;
 		}
+		// Handle the case
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			predicate.handle(errors, scopeTable, classTable);
 			for (branch e : branches) {
@@ -588,7 +617,7 @@ public class AST{
 				e.value.handle(errors, scopeTable, classTable);
 				scopeTable.exitScope();
 			}
-			//HashMap<String, Boolean> branchTypes = new HashMap<>();
+			// return the common type
 			String t = branches.get(0).value.type;
 			List<String> branchTypes = new ArrayList<>();
 			for (branch br : branches) {
@@ -655,6 +684,7 @@ public class AST{
 			str += space+sp+typeid+"\n"+body.getString(space+sp);
 			return str;
 		}
+		// Scope and check if return type is valid
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			scopeTable.enterScope();
 			for (formal f : formals) {
@@ -681,6 +711,7 @@ public class AST{
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_attr\n"+space+sp+name+"\n"+space+sp+typeid+"\n"+value.getString(space+sp);
 		}
+		// CHeck for type conformance
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			if (value instanceof no_expr == false) {
 				value.handle(errors, scopeTable, classTable);
@@ -712,6 +743,7 @@ public class AST{
 			str += space+sp+")";
 			return str;
 		}
+		// For each feature call handle
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			for (feature f : features) {
 				f.handle(errors, scopeTable, classTable);
