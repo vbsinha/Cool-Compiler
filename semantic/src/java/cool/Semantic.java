@@ -27,9 +27,9 @@ public class Semantic{
 	Don't change code above this line
 */
 
-    ClassTable classTable = new ClassTable();
-    ScopeTable<AST.attr> scopeTable = new ScopeTable<AST.attr>();
-    String filename;
+	ClassTable classTable = new ClassTable();
+	ScopeTable<AST.attr> scopeTable = new ScopeTable<AST.attr>();
+	String filename;
 	public Semantic(AST.program program){
 		//Write Semantic analyzer code here
 
@@ -40,19 +40,19 @@ public class Semantic{
 		}
 
 		for (AST.class_ c : program.classes) {
-		    filename = c.filename;
-		    scopeTable.enterScope();
-		    scopeTable.insert("self", new AST.attr("self", c.name, new AST.no_expr(c.lineNo), c.lineNo));
-		    for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet())
-		        scopeTable.insert(entry.getKey(), entry.getValue());
-		    //scopeTable.insertAll(classTable.getAttrs(e.name));
+			filename = c.filename;
+			scopeTable.enterScope();
+			scopeTable.insert("self", new AST.attr("self", c.name, new AST.no_expr(c.lineNo), c.lineNo));
+			for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet())
+				scopeTable.insert(entry.getKey(), entry.getValue());
+			//scopeTable.insertAll(classTable.getAttrs(e.name));
 			// c.handle
 		   	List<Error> errors = new ArrayList<>();
 			c.handle(errors, scopeTable, classTable);
 			for (Error e : errors) {
 				reportError(filename, e.lineNo, e.err);
 			}
-		    scopeTable.exitScope();
+			scopeTable.exitScope();
 		}
 
 		ClassInfo main_class = classTable.classinfos.get("Main");
@@ -64,7 +64,7 @@ public class Semantic{
 
 	private void check_cycles(List <AST.class_> classes){
 
-	    /*HashMap <String, Integer> classIndex = new HashMap <String, Integer> ();
+		/*HashMap <String, Integer> classIndex = new HashMap <String, Integer> ();
 		HashMap <Integer, String> indexClass = new HashMap <Integer, String>();*/
 		HashMap <String, AST.class_> astClasses = new HashMap <String, AST.class_> ();
 		HashMap < String, ArrayList <String> > graph = new HashMap < String, ArrayList <String> >();
@@ -79,32 +79,32 @@ public class Semantic{
 		List <String> inherit = Arrays.asList("String", "Int", "Bool");
 
 		for (AST.class_ c : classes){
-		    if (classNames.contains(c.name)){
-		        reportError(c.filename, c.lineNo, "Class "+c.name+" has been redefined.");
-		        System.exit(1);
-		    }
-		    else if (redef.contains(c.name)){
-		        reportError(c.filename, c.lineNo, "Class "+c.name+" can not be redefined.");
-		        System.exit(1);
-		    }
-		    else if (inherit.contains(c.parent)){
-		        reportError(c.filename, c.lineNo, "Class "+c.parent+" can not be inherited.");
-		        System.exit(1);
-		    }
-		    else{
-		        classNames.add(c.name);
-		        graph.put(c.name, new ArrayList <String> ());
-		        astClasses.put(c.name, c);
-		    }
+			if (classNames.contains(c.name)){
+				reportError(c.filename, c.lineNo, "Class "+c.name+" has been redefined.");
+				System.exit(1);
+			}
+			else if (redef.contains(c.name)){
+				reportError(c.filename, c.lineNo, "Class "+c.name+" can not be redefined.");
+				System.exit(1);
+			}
+			else if (inherit.contains(c.parent)){
+				reportError(c.filename, c.lineNo, "Class "+c.parent+" can not be inherited.");
+				System.exit(1);
+			}
+			else{
+				classNames.add(c.name);
+				graph.put(c.name, new ArrayList <String> ());
+				astClasses.put(c.name, c);
+			}
 		}
 
 		graph.get("Object").add("IO");
 		for (AST.class_ c : classes){
-		    if (classNames.contains(c.parent) == false){
-		        reportError(c.filename, c.lineNo, "Class "+c.parent+" has not been defined.");
-		        System.exit(1);
-		    }
-		    graph.get(c.parent).add(c.name);
+			if (classNames.contains(c.parent) == false){
+				reportError(c.filename, c.lineNo, "Class "+c.parent+" has not been defined.");
+				System.exit(1);
+			}
+			graph.get(c.parent).add(c.name);
 		}
 
 		ArrayList <String> visitedClasses = new ArrayList <String> ();
@@ -114,38 +114,38 @@ public class Semantic{
 		//q.offer("Object");
 		//while(visitedClasses.getSize() != classNames.size())
 		for (String s : classNames){
-		    if (visitedClasses.contains(s) == false){
-		        q.offer(s);
-		        while(q.isEmpty() == false){
-		            String c = q.poll();
-		            for (String child : graph.get(c)){
-		                if (visitedClasses.contains(child)){
-		                    AST.class_ cClass = astClasses.get(c);
-		                    reportError(cClass.filename, cClass.lineNo, "Class "+child+" is involved in a cycle.");
-		                    cycle = true;
-		                }
-		                else {
-		                    q.offer(child);
-		                }
-		            }
-		            visitedClasses.add(c);
-		        }
-		    }
+			if (visitedClasses.contains(s) == false){
+				q.offer(s);
+				while(q.isEmpty() == false){
+					String c = q.poll();
+					for (String child : graph.get(c)){
+						if (visitedClasses.contains(child)){
+							AST.class_ cClass = astClasses.get(c);
+							reportError(cClass.filename, cClass.lineNo, "Class "+child+" is involved in a cycle.");
+							cycle = true;
+						}
+						else {
+							q.offer(child);
+						}
+					}
+					visitedClasses.add(c);
+				}
+			}
 		}
 
 		if (cycle)
-		    System.exit(1);
+			System.exit(1);
 
 		q.clear();
 		q.offer("Object");
 
 		while(q.isEmpty() == false){
-		    String currClass = q.poll();
-		    if (currClass != "Object" && currClass != "IO"){
-		        classTable.insert(astClasses.get(currClass));
-		    }
-		    for (String child : graph.get(currClass))
-		        q.offer(child);
+			String currClass = q.poll();
+			if (currClass != "Object" && currClass != "IO"){
+				classTable.insert(astClasses.get(currClass));
+			}
+			for (String child : graph.get(currClass))
+				q.offer(child);
 		}
 	}
 }

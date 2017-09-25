@@ -1,6 +1,7 @@
 package cool;
 import java.util.List;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 
@@ -478,10 +479,10 @@ public class AST{
 			method m = null;
 			type = "Object";
 			caller.handle(errors, scopeTable, classTable);
+			ClassInfo c = classTable.classinfos.get(caller.type);
 			for (expression e : actuals) {
 				e.handle(errors, scopeTable, classTable);
 			}
-			ClassInfo c = classTable.classinfos.get(caller.type);
 			if (c == null) {
 				errors.add(new Error(null, lineNo, "Undefined class " + caller.type));
 			} else {
@@ -530,10 +531,10 @@ public class AST{
 			method m = null;
 			type = "Object";
 			caller.handle(errors, scopeTable, classTable);
+			ClassInfo c = classTable.classinfos.get(typeid);
 			for (expression e : actuals) {
 				e.handle(errors, scopeTable, classTable);
 			}
-			ClassInfo c = classTable.classinfos.get(typeid);
 			if (c == null) {
 				errors.add(new Error(null, lineNo, "Static dispatch to undefined class " + typeid));
 			} else if (classTable.isAncestor(caller.type, typeid) == false) {
@@ -589,12 +590,12 @@ public class AST{
 				e.value.handle(errors, scopeTable, classTable);
 				scopeTable.exitScope();
 			}
-			HashMap<String, Boolean> branchTypes = new HashMap<>();
+			//HashMap<String, Boolean> branchTypes = new HashMap<>();
 			String t = branches.get(0).value.type;
-
+			List<String> branchTypes = new ArrayList<>();
 			for (branch br : branches) {
-				if (branchTypes.containsKey(br.type) == false)
-					branchTypes.put(br.type, true);
+				if (branchTypes.contains(br.type) == false)
+					branchTypes.add(br.type);
 				else
 					errors.add(new Error(null, lineNo, br.type+" is multiply branched in case statement"));
 				t = classTable.commonAncestor(t, br.value.type);
