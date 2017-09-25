@@ -1,0 +1,3 @@
+class Brash {
+	a : Int;
+};

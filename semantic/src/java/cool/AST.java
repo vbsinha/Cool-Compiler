@@ -31,8 +31,8 @@ public class AST{
                                 ;
         }
 
-	
-	public static class expression extends ASTNode {
+
+	public static abstract class expression extends ASTNode  {
 		String type;
 		public expression(){
 			type = "_no_type";
@@ -40,9 +40,9 @@ public class AST{
 		String getString(String space){
 			return "";
 		};
-		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
-			errors.add(new Error(null, lineNo, "This is occur never"));
-		}
+		abstract void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable);
+		// 	errors.add(new Error(null, lineNo, "This is occur never"));
+		// }
 	}
 	public static class no_expr extends expression {
 		public no_expr(int l){
@@ -50,6 +50,10 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_no_expr\n"+space+": "+type;
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			System.err.println(lineNo);
+			//errors.add(new Error(null, lineNo, "This should occur never"));
 		}
 	}
 	public static class bool_const extends expression{
@@ -143,13 +147,13 @@ public class AST{
 			e2.handle(errors, scopeTable, classTable);
 			List<String> basicTypes = Arrays.asList("String", "Int", "Bool");
 			if (basicTypes.contains(e1.type) || basicTypes.contains(e2.type)) {
-				if (e1.type.equals(e2.type) == false) 
+				if (e1.type.equals(e2.type) == false)
 					errors.add(new Error(null, lineNo, "Cannot compare " + e1.type + " and " + e2.type));
 			}
 			type = "Bool";
 		}
 	}
-	
+
 
 	public static class leq extends expression{
 		public expression e1;
@@ -334,8 +338,7 @@ public class AST{
 			if (c == null) {
 				errors.add(new Error(null, lineNo, "Undefined class " + typeid));
 				type = "Object";
-			}
-			type = typeid;
+			} else type = typeid;
 		}
 	}
 	public static class assign extends expression{
@@ -461,12 +464,12 @@ public class AST{
 			name = n;
 			actuals = a;
 			lineNo = l;
-		} 
+		}
 		String getString(String space){
 			String str;
 			str = space+"#"+lineNo+"\n"+space+"_dispatch\n"+caller.getString(space+sp)+"\n"+space+sp+name+"\n"+space+sp+"(\n";
 			for ( expression e1 : actuals ) {
-				str += e1.getString(space+sp)+"\n";	
+				str += e1.getString(space+sp)+"\n";
 			}
 			str+=space+sp+")\n"+space+": "+type;
 			return str;
@@ -518,7 +521,7 @@ public class AST{
                         String str;
                         str = space+"#"+lineNo+"\n"+space+"_static_dispatch\n"+caller.getString(space+sp)+"\n"+space+sp+typeid+"\n"+space+sp+name+"\n"+space+sp+"(\n";
                         for ( expression e1 : actuals ) {
-                                str += e1.getString(space+sp)+"\n";     
+                                str += e1.getString(space+sp)+"\n";
                         }
                         str+=space+sp+")\n"+space+": "+type;
                         return str;
@@ -625,13 +628,13 @@ public class AST{
 			return space+"#"+lineNo+"\n"+space+"_formal\n"+space+sp+name+"\n"+space+sp+typeid;
 		}
 	}
-	public static class feature extends ASTNode {
+	public static abstract class feature extends ASTNode {
 		public feature(){
 		}
 		String getString(String space){
 			return "";
 		}
-
+		abstract void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable);
 	}
 	public static class method extends feature {
 		public String name;
@@ -653,6 +656,18 @@ public class AST{
 			str += space+sp+typeid+"\n"+body.getString(space+sp);
 			return str;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			scopeTable.enterScope();
+			for (formal f : formals) {
+				scopeTable.insert(f.name, new attr(f.name, f.typeid, new no_expr(f.lineNo), lineNo));
+			}
+			body.handle(errors, scopeTable, classTable);
+			if (classTable.isAncestor(body.type, typeid) == false) {
+				errors.add(new Error(null, body.lineNo, "Return type " + typeid + " of method "
+							+ name + " is not an ancestor of the infered method body type " + body.type));
+			}
+			scopeTable.exitScope();
+		}
 	}
 	public static class attr extends feature {
 		public String name;
@@ -666,6 +681,15 @@ public class AST{
 		}
 		String getString(String space){
 			return space+"#"+lineNo+"\n"+space+"_attr\n"+space+sp+name+"\n"+space+sp+typeid+"\n"+value.getString(space+sp);
+		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			if (value instanceof no_expr == false) {
+				value.handle(errors, scopeTable, classTable);
+				if (classTable.isAncestor(value.type, typeid) == false) {
+					errors.add(new Error(null, value.lineNo, "Declared type " + typeid + " of attribute "
+							+ name + " is not an ancestor of the infered type " + value.type));
+				}
+			}
 		}
 	}
 	public static class class_ extends ASTNode {
@@ -689,6 +713,11 @@ public class AST{
 			str += space+sp+")";
 			return str;
 		}
+		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
+			for (feature f : features) {
+				f.handle(errors, scopeTable, classTable);
+			}
+		}
 	}
 	public static class program extends ASTNode {
 		public List<class_> classes;
@@ -702,7 +731,7 @@ public class AST{
 			for ( class_ c : classes ) {
 				str += "\n"+c.getString(space+sp);
 			}
-			
+
 			return str;
 		}
 	}

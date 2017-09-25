@@ -32,13 +32,13 @@ public class Semantic{
     String filename;
 	public Semantic(AST.program program){
 		//Write Semantic analyzer code here
-		
+
 		check_cycles(program.classes);
-		
+
 		for(Error e : classTable.errors) {
 			reportError(e.filename, e.lineNo, e.err);
 		}
-		
+
 		for (AST.class_ c : program.classes) {
 		    filename = c.filename;
 		    scopeTable.enterScope();
@@ -46,68 +46,38 @@ public class Semantic{
 		    for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet())
 		        scopeTable.insert(entry.getKey(), entry.getValue());
 		    //scopeTable.insertAll(classTable.getAttrs(e.name));
-		    for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet()){
-		        AST.attr attr = entry.getValue();
-		        if(attr.value.getClass() != AST.no_expr.class) {
-		        	List<Error> errors = new ArrayList<>();
-		        	attr.value.handle(errors, scopeTable, classTable);
-		        	for (Error e : errors) {
-		        		reportError(c.filename, e.lineNo, e.err);
-		        	}
-			        // ProcessExpr(attr.value);
-			        if(classTable.isAncestor(attr.value.type, attr.typeid) == false) {
-				        reportError(c.filename, attr.value.lineNo, "Declared type " + attr.typeid + " of attribute "
-						        + attr.name + " is not an ancestor of the infered type " + attr.value.type);
-			        }
-		        }
-		    }
-		    
-		    for (Entry<String, AST.method> entry : classTable.classinfos.get(c.name).methodlist.entrySet()) {
-		        AST.method m = entry.getValue();
-		        scopeTable.enterScope();
-		        for(AST.formal e : m.formals) {
-			        scopeTable.insert(e.name, new AST.attr(e.name, e.typeid, new AST.no_expr(e.lineNo), e.lineNo));
-	            }
-	            List<Error> errors = new ArrayList<>();
-	        	m.body.handle(errors, scopeTable, classTable);
-	        	for (Error e : errors) {
-	        		reportError(c.filename, e.lineNo, e.err);
-	        	}
-	            // ProcessExpr(m.body);
-	            if (classTable.isAncestor(m.body.type, m.typeid)) {
-	                reportError(c.filename, m.body.lineNo, "Return type " + m.typeid + " of method "
-						        + m.name + " is not an ancestor of the infered method body type " + m.body.type);
-	            }
-		        scopeTable.exitScope();
-		        
-		    }
-		    
+			// c.handle
+		   	List<Error> errors = new ArrayList<>();
+			c.handle(errors, scopeTable, classTable);
+			for (Error e : errors) {
+				reportError(filename, e.lineNo, e.err);
+			}
 		    scopeTable.exitScope();
 		}
-		
+
 		ClassInfo main_class = classTable.classinfos.get("Main");
 		if(main_class == null)
 			reportError(filename, 1, "Program does not contain class Main");
 		else if(main_class.methodlist.containsKey("main") == false)
 			reportError(filename, 1, "Main class does not contain main method");
 	}
-	
+
 	private void check_cycles(List <AST.class_> classes){
-	    
+
 	    /*HashMap <String, Integer> classIndex = new HashMap <String, Integer> ();
 		HashMap <Integer, String> indexClass = new HashMap <Integer, String>();*/
 		HashMap <String, AST.class_> astClasses = new HashMap <String, AST.class_> ();
 		HashMap < String, ArrayList <String> > graph = new HashMap < String, ArrayList <String> >();
 		graph.put("Object", new ArrayList <String> ());
 		graph.put("IO", new ArrayList <String> ());
-		
+
 		ArrayList <String> classNames = new ArrayList <String> ();
 		classNames.add("Object");
 		classNames.add("IO");
-		
+
 		List <String> redef = Arrays.asList("Object", "String", "Int", "Bool", "IO");
 		List <String> inherit = Arrays.asList("String", "Int", "Bool");
-		
+
 		for (AST.class_ c : classes){
 		    if (classNames.contains(c.name)){
 		        reportError(c.filename, c.lineNo, "Class "+c.name+" has been redefined.");
@@ -125,9 +95,9 @@ public class Semantic{
 		        classNames.add(c.name);
 		        graph.put(c.name, new ArrayList <String> ());
 		        astClasses.put(c.name, c);
-		    }		        
+		    }
 		}
-		
+
 		graph.get("Object").add("IO");
 		for (AST.class_ c : classes){
 		    if (classNames.contains(c.parent) == false){
@@ -136,10 +106,10 @@ public class Semantic{
 		    }
 		    graph.get(c.parent).add(c.name);
 		}
-		
+
 		ArrayList <String> visitedClasses = new ArrayList <String> ();
-		Queue <String> q = new LinkedList<String>(); 
-		
+		Queue <String> q = new LinkedList<String>();
+
 		boolean cycle = false;
 		//q.offer("Object");
 		//while(visitedClasses.getSize() != classNames.size())
@@ -162,13 +132,13 @@ public class Semantic{
 		        }
 		    }
 		}
-		
+
 		if (cycle)
 		    System.exit(1);
-		    
+
 		q.clear();
 		q.offer("Object");
-		
+
 		while(q.isEmpty() == false){
 		    String currClass = q.poll();
 		    if (currClass != "Object" && currClass != "IO"){
@@ -176,32 +146,6 @@ public class Semantic{
 		    }
 		    for (String child : graph.get(currClass))
 		        q.offer(child);
-		}	    
+		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
