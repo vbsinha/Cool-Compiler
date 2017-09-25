@@ -42,8 +42,6 @@ public class AST{
 			return "";
 		};
 		abstract void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable);
-		// 	errors.add(new Error(null, lineNo, "This is occur never"));
-		// }
 	}
 	public static class no_expr extends expression {
 		public no_expr(int l){
@@ -54,7 +52,7 @@ public class AST{
 		}
 		void handle(List<Error> errors, ScopeTable<attr> scopeTable, ClassTable classTable) {
 			System.err.println(lineNo);
-			//errors.add(new Error(null, lineNo, "This should occur never"));
+			errors.add(new Error(null, lineNo, "This should occur never"));
 		}
 	}
 	public static class bool_const extends expression{
@@ -665,7 +663,7 @@ public class AST{
 			body.handle(errors, scopeTable, classTable);
 			if (classTable.isAncestor(body.type, typeid) == false) {
 				errors.add(new Error(null, body.lineNo, "Return type " + typeid + " of method "
-							+ name + " is not an ancestor of the infered method body type " + body.type));
+							+ name + " does not conform to the infered method body type " + body.type));
 			}
 			scopeTable.exitScope();
 		}
@@ -688,7 +686,7 @@ public class AST{
 				value.handle(errors, scopeTable, classTable);
 				if (classTable.isAncestor(value.type, typeid) == false) {
 					errors.add(new Error(null, value.lineNo, "Declared type " + typeid + " of attribute "
-							+ name + " is not an ancestor of the infered type " + value.type));
+							+ name + " does not conform to the infered type " + value.type));
 				}
 			}
 		}

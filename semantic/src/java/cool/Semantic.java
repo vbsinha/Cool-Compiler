@@ -30,14 +30,20 @@ public class Semantic{
 	ClassTable classTable = new ClassTable();
 	ScopeTable<AST.attr> scopeTable = new ScopeTable<AST.attr>();
 	String filename;
-	public Semantic(AST.program program){
-		//Write Semantic analyzer code here
 
-		check_cycles(program.classes);
-
-		for(Error e : classTable.errors) {
+	public void reportErrors(List<Error> errors) {
+		for(Error e : errors) {
+			if (e.filename == null) e.filename = filename;
 			reportError(e.filename, e.lineNo, e.err);
 		}
+	}
+
+	public Semantic(AST.program program){
+
+		// Check if any cycle is present in inheritence graph of the program
+		check_cycles(program.classes);
+		// Report the errors found while checking for cycles
+		reportErrors(classTable.errors);
 
 		for (AST.class_ c : program.classes) {
 			filename = c.filename;
@@ -45,13 +51,9 @@ public class Semantic{
 			scopeTable.insert("self", new AST.attr("self", c.name, new AST.no_expr(c.lineNo), c.lineNo));
 			for (Entry<String, AST.attr> entry : classTable.classinfos.get(c.name).attrlist.entrySet())
 				scopeTable.insert(entry.getKey(), entry.getValue());
-			//scopeTable.insertAll(classTable.getAttrs(e.name));
-			// c.handle
 		   	List<Error> errors = new ArrayList<>();
 			c.handle(errors, scopeTable, classTable);
-			for (Error e : errors) {
-				reportError(filename, e.lineNo, e.err);
-			}
+			reportErrors(errors);
 			scopeTable.exitScope();
 		}
 
@@ -63,19 +65,21 @@ public class Semantic{
 	}
 
 	private void check_cycles(List <AST.class_> classes){
-
-		/*HashMap <String, Integer> classIndex = new HashMap <String, Integer> ();
-		HashMap <Integer, String> indexClass = new HashMap <Integer, String>();*/
 		HashMap <String, AST.class_> astClasses = new HashMap <String, AST.class_> ();
+		// Store Graph as adjacency list
 		HashMap < String, ArrayList <String> > graph = new HashMap < String, ArrayList <String> >();
-		graph.put("Object", new ArrayList <String> ());
-		graph.put("IO", new ArrayList <String> ());
+		// Add Object and IO to the graph
+		graph.put("Object", new ArrayList<String>());
+		graph.put("IO", new ArrayList<String>());
 
-		ArrayList <String> classNames = new ArrayList <String> ();
+		// List of seen classNames
+		ArrayList <String> classNames = new ArrayList<>();
 		classNames.add("Object");
 		classNames.add("IO");
 
+		// These classes cannot be redefined
 		List <String> redef = Arrays.asList("Object", "String", "Int", "Bool", "IO");
+		// These classes cannot be inherited from
 		List <String> inherit = Arrays.asList("String", "Int", "Bool");
 
 		for (AST.class_ c : classes){
@@ -111,8 +115,6 @@ public class Semantic{
 		Queue <String> q = new LinkedList<String>();
 
 		boolean cycle = false;
-		//q.offer("Object");
-		//while(visitedClasses.getSize() != classNames.size())
 		for (String s : classNames){
 			if (visitedClasses.contains(s) == false){
 				q.offer(s);
