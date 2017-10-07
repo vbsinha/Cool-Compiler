@@ -17,6 +17,8 @@ public class Codegen{
 	}
 	
 	private void print_classes(List <AST.class_> classes, PrintWriter out){
+	    
+	    // A hash Map that maps form class names to AST.class_
 		HashMap <String, AST.class_> astClasses = new HashMap <String, AST.class_> ();
 		// Store Graph as adjacency list
 		HashMap < String, ArrayList <String> > graph = new HashMap < String, ArrayList <String> >();
@@ -24,16 +26,7 @@ public class Codegen{
 		graph.put("Object", new ArrayList<String>());
 		graph.put("IO", new ArrayList<String>());
 
-		// List of seen classNames
-		//ArrayList <String> classNames = new ArrayList<>();
-		//classNames.add("Object");
-		//classNames.add("IO");
-
-		// These classes cannot be redefined
-		//List <String> redef = Arrays.asList("Object", "String", "Int", "Bool", "IO");
-		// These classes cannot be inherited from
-		//List <String> inherit = Arrays.asList("String", "Int", "Bool");
-
+        // Populate astClasses maps and strat creating Adjcacency list
 		for (AST.class_ c : classes){			
 			graph.put(c.name, new ArrayList <String> ());
 			astClasses.put(c.name, c);
@@ -48,8 +41,7 @@ public class Codegen{
 			graph.get(c.parent).add(c.name);
 		}
 
-		// We perform a BFS on the graph and check for inheritence cycle in the graph
-		//ArrayList <String> visitedClasses = new ArrayList<>(); // Class that have been visited while doing BFS
+		// We perform a BFS on the graph and print the LLVM-IR for each class
 		Queue <String> q = new LinkedList<String>(); // Queue reuired for BFS
 
 		q.offer("Object"); // Add root Class
@@ -62,7 +54,7 @@ public class Codegen{
 			}
 		}
 
-		q.clear();
+		q.clear(); // Clear the queue so that the next BFS can be performed
 		
 		q.offer("Object"); // Add root Class
 		while(q.isEmpty() == false){
@@ -76,9 +68,13 @@ public class Codegen{
 		q.clear();
 	}
 }
+
+// Print the LLVM-IR for each class declaration
 void printClass(String c){
     ClassInfo ci = classTable.classinfos.get(c);
 }
+
+// Print the constructor of te classes and print th inbuilt functions for Object, String, IO, Int, Bool
 void printClassMethods(String c){
     ClassInfo ci = classTable.classinfos.get(c);
 }
