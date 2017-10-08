@@ -134,141 +134,80 @@ public class ClassTable{
 		
 		assignString();
 		
-		/*classes.put("Int", new IRClassPlus("Int", "Object", new HashMap<String, AST.attr>(), new HashMap<String, AST.method>(), new HashMap <String, Integer>(), obj_moffset, new ArrayList <AST.attr>(), obj_mlist, irname));
-		height.put("Int", 1);
-		classes.get("Int").mlist.putAll(ol);	// Int inherits from Object
-		classes.get("Int").methodList.get(2).typeid = "Int";	// redefine copy
-		classes.get("Int").IRname.put("copy", "@_ZN3Int4copy");
-		
-		classes.put("Bool", new IRClassPlus("Bool", "Object", new HashMap<String, AST.attr>(), new HashMap<String, AST.method>(), new HashMap <String, Integer>(), obj_moffset, new ArrayList <AST.attr>(), obj_mlist, irname));
-		height.put("Bool", 1);
-		classes.get("Bool").mlist.putAll(ol);	// Bool inherits from Object
-		classes.get("Int").methodList.get(2).typeid = "Bool";
-		classes.get("Bool").IRname.put("copy", "@_ZN4Bool4copy");
-		
-		HashMap <String, AST.method> sl = new HashMap<String, AST.method>();
-		List<AST.formal> str_formal = new ArrayList<AST.formal>();
-		str_formal.add(new AST.formal("this", "String", 0));
-		List<AST.formal> concat_formal = new ArrayList<AST.formal>();
-		concat_formal.addAll(str_formal);
-		concat_formal.add(new AST.formal("that", "String", 0));
-		List<AST.formal> substr_formal = new ArrayList<AST.formal>();
-		substr_formal.addAll(str_formal);
-		substr_formal.add(new AST.formal("index", "Int", 0));
-		substr_formal.add(new AST.formal("len", "Int", 0));
-		
-		sl.put("length", new AST.method("length", str_formal, "Int", new AST.no_expr(0), 0));
-		sl.put("concat", new AST.method("concat", concat_formal, "String", new AST.no_expr(0), 0));
-		sl.put("substr", new AST.method("substr", substr_formal, "String", new AST.no_expr(0), 0));
-		
-		HashMap <String, Integer> str_moffset = new HashMap <String, Integer>();
-		str_moffset.putAll(obj_moffset);
-		str_moffset.put("length", 3);
-		str_moffset.put("concat", 4);
-		str_moffset.put("substr", 5);
-		
-		ArrayList <AST.method> str_mlist = new ArrayList <AST.method>();
-		str_mlist.addAll(obj_mlist);
-		str_mlist.add(new AST.method("length", str_formal, "Int", new AST.no_expr(0), 0));
-		str_mlist.add(new AST.method("concat", concat_formal, "String", new AST.no_expr(0), 0));
-		str_mlist.add(new AST.method("substr", substr_formal, "String", new AST.no_expr(0), 0));
-		str_mlist.set(2, new AST.method("copy", str_formal, "String", new AST.no_expr(0), 0));
-		str_mlist.get(2).typeid = "String";		// redefine copy
-		
-		HashMap <String, String> str_irname = new HashMap <String, String> ();
-		str_irname.putAll(irname);
-		str_irname.put("length", "@_ZN6String6length");
-		str_irname.put("concat", "@_ZN6String6concat");
-		str_irname.put("substr", "@_ZN6String6substr");
-		
-		// change copy
-		//str_irname.put("copy", "@_ZN6String4copy");
-				
-		
-		
-		classes.put("String", new IRClassPlus("String", "Object", new HashMap<String, AST.attr>(), sl, new HashMap<String, Integer>(), str_moffset, new ArrayList <AST.attr>(), str_mlist, str_irname));
-		height.put("String", 1);
-		classes.get("String").mlist.putAll(ol);		// String Inherits from Object
-		classes.get("String").IRname.put("copy", "@_ZN5String4copy");*/
 	}
 
     // Insert this class into ClassTable after some error checks
 	void insert(AST.class_ c) {
-		String parent = c.parent;
-		ClassInfo currClass = new ClassInfo(c.parent, classinfos.get(c.parent).attrlist,
-			classinfos.get(c.parent).methodlist, classinfos.get(c.parent).depth + 1);
+		/* Whenever a new class is inserted,
+		 * - Inherits the attributes and methods of the parent class.
+		 * - Checks for multiple method or attribute definitions.
+		 * - Checks for correct method overrides and any attribute overrides
+		 */
+		String par = c.parent;
+		classinfos tc = new ClassInfo(par, classinfos.get(par).attrList, classinfos.get(par).methodList, classinfos.get(par).methodName, classinfos.get(par).depth + 1);	// adding the parents attribute list and method list
 
-		List<String> currClassAttrList = new ArrayList<>();
-		List<String> currClassMethodList = new ArrayList<>();
-
-		for(AST.feature feat : c.features) {
-			if(feat instanceof AST.attr) {
-				AST.attr attrfeat = (AST.attr) feat;
-				// Check if an attribute is defined multiple times
-				if(currClassAttrList.contains(attrfeat.name)) {
-					errors.add(new Error(c.filename, attrfeat.lineNo,
-							   "Attribute " + attrfeat.name + " is defined multiple times in class " + c.name));
-				}
-				// Check if the attribute was defined in parent's class
-				else if (currClass.attrlist.containsKey(attrfeat.name)) {
-					errors.add(new Error(c.filename, attrfeat.lineNo, "Attribute " + attrfeat.name
-					 + " of class " + c.name + " is already an attribute of its parent class"));
-				} else {
-					currClass.attrlist.put(attrfeat.name, attrfeat);
-					currClassAttrList.add(attrfeat.name);
-				}
+		//HashMap <String, 
+		HashMap <String, AST.attr> tc_alist = new HashMap<String, AST.attr>();
+		HashMap <String, AST.method> tc_mlist = new HashMap <String, AST.method>();
+		
+		tc.attrList.add(new AST.attr("_Par", "class." + par, new AST.no_expr(0), 0));
+		//tc.attrOffset.put("__Base", 0);
+	
+		/* Checks for the following errors with respect to the inherited class:
+		 * - redefinition of an inherited attribute (Note: the class retains the inherited attribute and discards the attribute defined within the class)
+		 * - wrong redefinition of an inherited method (Note : the class retains the inherited method and discards the method defined within the class)
+		 */
+		/* adding attrs of parent */
+		//for(Entry<String, AST.attr> entry : tc_alist.entrySet()) {
+		//	tc.alist.put(entry.getKey(), entry.getValue());
+		//}
+		
+		/* attrs of the parent are accessed via the base attr */
+		
+		
+		/* Checks for the following errors within a class:
+		 * - multiple attribute definitions
+		 * - multiple method definitions
+		 */
+		/* adding attrs and methods of class */
+		
+		//int attr_ptr = 1;
+		
+		for(AST.feature e : c.features) {
+			if(e.getClass() == AST.attr.class) {
+				AST.attr ae = (AST.attr) e;
+				
+				tc_alist.put(ae.name, ae);
+				tc.attrList.add(ae);
+				//tc.attrOffset.put(ae.name, attr_ptr);
+				//attr_ptr++;
 			}
-			else if(feat instanceof AST.method) {
-				AST.method methodfeat = (AST.method) feat;
-				// Check if a method is defined multiple times
-				if(currClassMethodList.contains(methodfeat.name))
-					errors.add(new Error(c.filename, methodfeat.lineNo,
-							   "Method " + methodfeat.name + " is defined multiple times in class " + c.name));
-				else {
-					boolean foundErr = false;
-					List<String> parameters = new ArrayList<>();
-					// Check if any parameter is repeated twice in argument list
-					for (AST.formal form : methodfeat.formals){
-						if(parameters.contains(form.name)){
-							errors.add(new Error(c.filename, methodfeat.lineNo, form.name +
-												" has been repeated more than once as parameter in " + methodfeat.name));
-							foundErr = true;
-						} else parameters.add(form.name);
-					}
-					// In case of inheritance
-					if (currClass.methodlist.containsKey(methodfeat.name)) {
-						AST.method parentMethod = currClass.methodlist.get(methodfeat.name);
-                        // Have different number of parameter?
-						if(methodfeat.formals.size() != parentMethod.formals.size()) {
-							errors.add(new Error(c.filename, methodfeat.lineNo, "Different number of parameters in redefined method "
-												+ methodfeat.name));
-							foundErr = true;
-						}
-						else {
-						    // Have different return types?
-							if(methodfeat.typeid.equals(parentMethod.typeid) == false) {
-								errors.add(new Error(c.filename, methodfeat.lineNo, "Return type" + methodfeat.typeid + " is differnt in redefined method " + methodfeat.name +  " from original return type " + parentMethod.typeid));
-								foundErr = true;
-							}
-							// Have different parameter types?
-							for(int i = 0; i < methodfeat.formals.size(); ++i) {
-								if(methodfeat.formals.get(i).typeid.equals(parentMethod.formals.get(i).typeid) == false) {
-									errors.add(new Error(c.filename, methodfeat.lineNo, "Parameter type " + methodfeat.formals.get(i).typeid +" is differnt in redefined method " + methodfeat.name +  " from original return type " + parentMethod.formals.get(i).typeid));
-									foundErr = true;
-								}
-							}
-						}
-					}
-					// If no error
-					if (foundErr == false) {
-						currClass.methodlist.put(methodfeat.name, methodfeat);
-						currClassMethodList.add(methodfeat.name);
-					}
-				}
+			else if(e.getClass() == AST.method.class) {
+				AST.method me = (AST.method) e;
+				tc_mlist.put(me.name, me);
 			}
 		}
-
-		classinfos.put(c.name, currClass);
+		
+		// change the copy method name
+		tc.IRname.put("copy", "@_ZN" + tc.name.length() + tc.name + "4copy");
+		
+		// tc_mlist contains methods in current class
+		
+		int method_ptr = tc.methodList.size();
+		for(Entry<String, AST.method> entry : tc_mlist.entrySet()) {
+			String me_name = entry.getKey();
+			if(tc.mlist.containsKey(entry.getKey())) {		// overloaded method
+				tc.methodList.set(tc.methodOffset.get(me_name), entry.getValue());
+				tc.IRname.put(me_name, "@_ZN" + tc.name.length() + tc.name + me_name.length() + me_name);
+			} else {
+				tc.methodList.add(entry.getValue());
+				tc.methodOffset.put(entry.getKey(), method_ptr);
+				tc.IRname.put(me_name, "@_ZN" + tc.name.length() + tc.name + me_name.length() + me_name);
+				method_ptr++;
+			}
+		}
+		height.put(c.name, height.get(c.parent) + 1);
+		classes.put(c.name, tc);
 	}
 
 	// Check if given ancestor class is ancestor of the given child class

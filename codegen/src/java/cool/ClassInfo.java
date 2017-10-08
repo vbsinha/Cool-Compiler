@@ -6,16 +6,16 @@ import java.util.HashMap;
 public class ClassInfo {
 	public String parent = null;
 	public int depth = 0;
-	public HashMap <String, AST.attr> attrlist;
-	public HashMap <String, AST.method> methodlist;
+	public HashMap <String, AST.attr> attrList;
+	public HashMap <String, AST.method> methodList;
 	public HashMap <String, String> methodName;
 
 	ClassInfo(String par, HashMap<String, AST.attr> alist, HashMap<String, AST.method> mlist, HashMap<String, String> mn, int d) {
 		parent = par;
-		attrlist = new HashMap <String, AST.attr>();
-		attrlist.putAll(alist);
-		methodlist = new HashMap <String, AST.method>();
-		methodlist.putAll(mlist);
+		attrList = new HashMap <String, AST.attr>();
+		attrList.putAll(alist);
+		methodList = new HashMap <String, AST.method>();
+		methodList.putAll(mlist);
 		methodName = new HashMap <String, String>();
 		methodName.putAll(mn);
 		depth = d;
