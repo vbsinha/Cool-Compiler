@@ -8,7 +8,7 @@ public class ClassTable{
 
 	public ClassTable(){	
 		
-		assignObj();
+		// assignObj();
 		
 		// assignIO();
 		
@@ -139,8 +139,13 @@ public class ClassTable{
 		 * - Checks for correct method overrides and any attribute overrides
 		 */
 		String par = c.parent;
-		ClassInfo ci = new ClassInfo(par, classinfos.get(par).attrMap, new HashMap<String, AST.method>(), classinfos.get(par).methodName, classinfos.get(par).depth + 1);
-
+		ClassInfo pari = classinfos.get(par);
+		ClassInfo ci = null;
+		if (pari != null)
+		    ci = new ClassInfo(par, pari.attrMap, new HashMap<String, AST.method>(), pari.methodName, classinfos.get(par).depth + 1);
+		else 
+            ci = new ClassInfo(par, new HashMap<String, AST.attr>(), new HashMap<String, AST.method>(), new HashMap<String, String>(), 0);
+            
 		for(AST.feature f : c.features) {
 			if (f instanceof AST.attr) {
 				AST.attr a = (AST.attr) f;
