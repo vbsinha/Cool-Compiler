@@ -7,17 +7,29 @@ public class Codegen{
     
     ClassTable classTable = new ClassTable();
     String filename;
+    String mainReturnType = "i32";
+    String globalStrings = "";
+    int varCount = 0;
     
 	public Codegen(AST.program program, PrintWriter out){
 		//Write Code generator code here
         out.println("; I am a comment in LLVM-IR. Feel free to remove me.");
         printHeaders(out);
-        print_classes(program.classes, out);
+        printClasses(program.classes, out);
         
-        
+        printMainFunc(out);
+	}
+
+	private void printMainFunc(PrintWriter out) {
+		out.println("define i32 @main() {\n"
+			+"entry:\n"
+			+"\t%0 = alloca %class.Main, align 4\n"
+			+"\tcall "+mainReturnType+" @_ZN4Main4main(%class.Main* %0)\n"
+			+"\tret i32 0\n"
+			+"}");
 	}
 	
-	private void print_classes(List <AST.class_> classes, PrintWriter out){
+	private void printClasses(List <AST.class_> classes, PrintWriter out){
 	    
 	    // A hash Map that maps form class names to AST.class_
 		HashMap <String, AST.class_> astClasses = new HashMap <String, AST.class_> ();
@@ -39,7 +51,6 @@ public class Codegen{
 		// graph.get("Object").add("IO");
 		// Check if parents of the classes exits and add edges from parent to child
 		for (AST.class_ c : classes){
-			System.out.println(c.name);
 			if (c.parent != null) graph.get(c.parent).add(c.name);
 		}
 
@@ -98,7 +109,7 @@ public class Codegen{
     	else if (t.equals("String"))
     		return "[1024 x i8]*";
     	else {
-    		return "%class."+t;
+    		return "%class."+t+"*";
     	}
 	}
 
@@ -116,6 +127,7 @@ public class Codegen{
 			printIOMethods(out);
 			return;
 		}
+
 	    ClassInfo ci = classTable.classinfos.get(c);
 	    
 	    for (Map.Entry<String, AST.method> entry : ci.methodMap.entrySet()){
@@ -124,9 +136,105 @@ public class Codegen{
 	    	for (AST.formal f : m.formals) {
 	    		formals += ", "+parseType(f.typeid)+" %"+f.name;
 	    	}
+	    	if (c.equals("Main") && entry.getKey().equals("main"))
+	    		mainReturnType = parseType(m.typeid);
 	        out.println("define "+parseType(m.typeid)+" "+ci.methodName.get(entry.getKey())+"( "+formals+" )" + "{");
+	        out.println("entry:");
+	        varCount = -1;
+	        String ret = printExpr(m.body, out);
+	        out.println("\tret "+ret);
 	        out.println("}");
 	    }
+	}
+
+	String printExpr(AST.expression expr, PrintWriter out) {
+		if (expr instanceof AST.bool_const) {
+			AST.bool_const e = (AST.bool_const) expr;
+			return "i32 " + (e.value ? 1 : 0);
+		} else if (expr instanceof AST.string_const) {
+			return ""; // TODO
+		} else if (expr instanceof AST.int_const) {
+			AST.int_const e = (AST.int_const) expr;
+			return "i32 " + e.value;
+		} else if (expr instanceof AST.object) {
+			AST.object e = (AST.object) expr; //  TODO
+			return parseType(e.type) + " %"+e.name;
+		} else if (expr instanceof AST.comp) {
+			AST.comp e = (AST.comp) expr;
+			String e1 = printExpr(e.e1, out);
+			out.println("\t%"+(++varCount)+" = sub nsw i32 1, " + e1.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.eq) {
+			AST.eq e = (AST.eq) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = icmp eq i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.leq) {
+			AST.leq e = (AST.leq) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = icmp sle i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.lt) {
+			AST.lt e = (AST.lt) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = icmp slt i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.neg) {
+			AST.neg e = (AST.neg) expr;
+			String e1 = printExpr(e.e1, out);
+			out.println("\t%"+(++varCount)+" = sub nsw i32 0, " + e1.substring(4));
+		} else if (expr instanceof AST.divide) {
+			AST.divide e = (AST.divide) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = sdiv i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.mul) {
+			AST.mul e = (AST.mul) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = mul nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.sub) {
+			AST.sub e = (AST.sub) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = sub nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.plus) {
+			AST.plus e = (AST.plus) expr;
+			String e1 = printExpr(e.e1, out);
+			String e2 = printExpr(e.e2, out);
+			out.println("\t%"+(++varCount)+" = add nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
+			return "i32 %"+varCount;
+		} else if (expr instanceof AST.isvoid) {
+			// TODO
+		} else if (expr instanceof AST.new_) {
+			AST.new_ e = (AST.new_) expr;
+			out.println("\t%"+(++varCount)+" = alloca "+parseType(e.typeid)+", align 4");
+			return parseType(e.typeid)+" %"+varCount;
+		} else if (expr instanceof AST.assign) {
+			// TODO
+		} else if (expr instanceof AST.block) {
+			AST.block e = (AST.block) expr;
+			String re = "";
+			for (AST.expression ex : e.l1) {
+				re = printExpr(ex, out);
+			}
+			return parseType(expr.type)+" "+re.substring(4);
+		} else if (expr instanceof AST.loop) {
+			// TODO
+		} else if (expr instanceof AST.cond) {
+			// TODO
+		} else if (expr instanceof AST.static_dispatch) {
+			// TODO
+		} else {
+			System.out.println("I will never come here");
+		}
+		return "";
 	}
 
 	void printHeaders(PrintWriter out) {
