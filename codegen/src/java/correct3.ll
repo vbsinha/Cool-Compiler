@@ -16,39 +16,16 @@ declare void @exit(i32)
 @strformatstr = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @intformatstr = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 
-%class.Object = type {  }
-%class.IO = type { %class.Object }
-%class.Int = type { %class.Object }
-%class.String = type { %class.Object }
-%class.Bool = type { %class.Object }
-%class.Main = type { %class.IO, i32 }
+%class.Object = type { i32, i8* }
+%class.IO = type { i32, i8*, %class.Object }
+%class.Int = type { i32, i8*, %class.Object }
+%class.String = type { i32, i8*, %class.Object }
+%class.Bool = type { i32, i8*, %class.Object }
+%class.Main = type { i32, i8*, %class.IO, i32 }
 define %class.Object* @_ZN6Object5abort( %class.Object* %this ) noreturn {
 entry:
 	call void @exit( i32 1 )
 	ret %class.Object* null
-}
-
-define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %this ) {
-entry:
-	%0 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 0
-	%1 = load i32, i32* %0
-	%2 = getelementptr inbounds [8 x [1024 x i8]], [8 x [1024 x i8]]* @classnames, i32 0, i32 %1
-	%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %2 )
-	ret [1024 x i8]* %retval
-}
-
-define %class.Object* @_ZN6Object4copy( %class.Object* %this ) {
-entry:
-	%call = call i8* @malloc( i64 32 )
-	%retval = bitcast i8* %call to %class.Object*
-	%0 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 0
-	store i32 0, i32* %0
-	%1 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 1
-	store i8* bitcast ( [3 x i8*]* @VTObject to i8*), i8** %1
-	%2 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 2
-	%3 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 2
-	call void @_ZN6Object4copyTo( %classbaseObject* %2, %classbaseObject* %3 )
-	ret %class.Object* %retval
 }
 
 define %class.IO* @_ZN2IO10out_string( %class.IO* %this, [1024 x i8]* %str ) {
@@ -119,13 +96,18 @@ entry:
 	ret [1024 x i8]* %retval
 }
 
-define i32 @_ZN4Main10print_bool( %class.Main* %self, i32 %a ){
+define i32 @main() {
+entry:
+	ret i32 0
 }
-define i32 @_ZN4Main11boolean_xor( %class.Main* %self, i32 %a, i32 %b ){
-}
-define i32 @_ZN4Main11boolean_and( %class.Main* %self, i32 %a, i32 %b ){
-}
-define %class.Object @_ZN4Main4main( %class.Main* %self ){
-}
-define i32 @_ZN4Main10boolean_or( %class.Main* %self, i32 %a, i32 %b ){
-}
+
+;define i32 @_ZN4Main10print_bool( %class.Main* %self, i32 %a ){
+;}
+;define i32 @_ZN4Main11boolean_xor( %class.Main* %self, i32 %a, i32 %b ){
+;}
+;define i32 @_ZN4Main11boolean_and( %class.Main* %self, i32 %a, i32 %b ){
+;}
+;define %class.Object @_ZN4Main4main( %class.Main* %self ){
+;}
+;define i32 @_ZN4Main10boolean_or( %class.Main* %self, i32 %a, i32 %b ){
+;}

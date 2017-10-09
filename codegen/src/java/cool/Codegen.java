@@ -74,6 +74,10 @@ public class Codegen{
 
 	// Print the LLVM-IR for each class declaration
 	void printClass(String c, PrintWriter out){
+		// if (c.equals("Object")) {
+			
+		// 	return;
+		// }
 	    ClassInfo ci = classTable.classinfos.get(c);
 	    String attrsStr = "";
 	    for (String a : ci.attrList) {
@@ -83,11 +87,6 @@ public class Codegen{
 	    	}
 	    	AST.attr attr = ci.attrMap.get(a);
 	    	attrsStr += parseType(attr.typeid)+", ";
-	    	// if (attr.typeid.equals("Int") || attr.typeid.equals("Bool"))
-	    	// 	attrsStr += "i32, ";
-	    	// else {
-	    	// 	attrsStr += "%class."+attr.typeid+", ";
-	    	// }
 	    }
 	    if (attrsStr.length() >= 2) attrsStr = attrsStr.substring(0, attrsStr.length()-2);
 	    out.println("%class."+c+" = type { " + attrsStr + " }");
@@ -155,28 +154,28 @@ public class Codegen{
 			+ "\tret %class.Object* null\n"
 			+ "}\n");
 
-		out.println("define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %this ) {\n"
-			+ "entry:\n"
-			+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 0\n"
-			+ "\t%1 = load i32, i32* %0\n"
-			+ "\t%2 = getelementptr inbounds [8 x [1024 x i8]], [8 x [1024 x i8]]* @classnames, i32 0, i32 %1\n"
-			+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %2 )\n"
-			+ "\tret [1024 x i8]* %retval\n"
-			+ "}\n");
+		// out.println("define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %this ) {\n"
+		// 	+ "entry:\n"
+		// 	+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 0\n"
+		// 	+ "\t%1 = load i32, i32* %0\n"
+		// 	+ "\t%2 = getelementptr inbounds [8 x [1024 x i8]], [8 x [1024 x i8]]* @classnames, i32 0, i32 %1\n"
+		// 	+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %2 )\n"
+		// 	+ "\tret [1024 x i8]* %retval\n"
+		// 	+ "}\n");
 
-		out.println("define %class.Object* @_ZN6Object4copy( %class.Object* %this ) {\n"
-			+ "entry:\n"
-			+ "\t%call = call i8* @malloc( i64 32 )\n"
-			+ "\t%retval = bitcast i8* %call to %class.Object*\n"
-			+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 0\n"
-			+ "\tstore i32 0, i32* %0\n"
-			+ "\t%1 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 1\n"
-			+ "\tstore i8* bitcast ( [3 x i8*]* @VTObject to i8*), i8** %1\n"
-			+ "\t%2 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 2\n"
-			+ "\t%3 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 2\n"
-			+ "\tcall void @_ZN6Object4copyTo( %classbaseObject* %2, %classbaseObject* %3 )\n"
-			+ "\tret %class.Object* %retval\n"
-			+ "}\n");
+		// out.println("define %class.Object* @_ZN6Object4copy( %class.Object* %this ) {\n"
+		// 	+ "entry:\n"
+		// 	+ "\t%call = call i8* @malloc( i64 32 )\n"
+		// 	+ "\t%retval = bitcast i8* %call to %class.Object*\n"
+		// 	+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 0\n"
+		// 	+ "\tstore i32 0, i32* %0\n"
+		// 	+ "\t%1 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 1\n"
+		// 	+ "\tstore i8* bitcast ( [3 x i8*]* @VTObject to i8*), i8** %1\n"
+		// 	+ "\t%2 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 2\n"
+		// 	+ "\t%3 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 2\n"
+		// 	+ "\tcall void @_ZN6Object4copyTo( %classbaseObject* %2, %classbaseObject* %3 )\n"
+		// 	+ "\tret %class.Object* %retval\n"
+		// 	+ "}\n");
 	}
 
 	void printStringMethods(PrintWriter out) {
