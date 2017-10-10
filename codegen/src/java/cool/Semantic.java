@@ -438,6 +438,7 @@ public class Semantic{
 			new_.type = new_.typeid;
 	}
 	private void processNode(AST.isvoid isvoid) {
+		processNode(isvoid.e1);
 		isvoid.type = "Bool";
 	}
 	private void processNode(AST.plus plus) {

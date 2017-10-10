@@ -18,6 +18,7 @@ class Main {
 	main() : Int {
 		{
 			c@B.bb();
+			isvoid c;
 			if a < 3 then c else c fi;
 			if b < 3 then if a < 3 then 5 else 2 fi else 3 fi;
 			2+3;

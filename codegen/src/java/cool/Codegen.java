@@ -181,6 +181,7 @@ public class Codegen{
 			return "i32 " + e.value;
 		} else if (expr instanceof AST.object) {
 			AST.object e = (AST.object) expr;
+			System.out.println(e.getString(" "));
 			int attri = ci.attrList.indexOf(e.name);
 			if (attri == -1)
 				return parseType(e.type) + " %"+e.name;
@@ -242,8 +243,9 @@ public class Codegen{
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.isvoid) {
 			AST.isvoid e = (AST.isvoid) expr;
-			// TODO
-			return "";
+			String e1 = printExpr(cname, e.e1, out);
+			out.println("\t%"+(++varCount)+" = icmp eq "+e1+", null");
+			return "i32 %"+varCount;
 		} else if (expr instanceof AST.new_) {
 			AST.new_ e = (AST.new_) expr;
 			out.println("\t%"+(++varCount)+" = alloca "+parseType(e.typeid)+", align 4");
