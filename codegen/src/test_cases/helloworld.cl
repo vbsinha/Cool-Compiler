@@ -10,17 +10,18 @@ class C inherits B {};
 class Main {
 	a : Int <- 5;
 	b : Int <- 3;
-	c : C;
+	c : B;
 	str : String;
 	main2(cc : Int, d : Int) : Int {
 		{cc <- 3; cc <- 6; new IO@IO.out_int(cc); 3;}
 	};
-	main() : Int {
+	main() : Object {
 		{
+			c <- new C;
 			self@Main.main2(5, 6);
 			a <- 6;
 			new IO@IO.out_int(a);
-			6+7;
+			5;
 		}
 	};
 };

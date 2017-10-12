@@ -279,7 +279,7 @@ public class Semantic{
 		else if(classTable.conforms(assign.e1.type, a.typeid) == false)
 			reportError(filename, assign.lineNo, "Type " + assign.e1.type + " of assigned expression does not conform to declared type "
 					+ a.typeid + " of identifier " + a.name);
-		assign.type = assign.e1.type;
+		assign.type = a.typeid;
 	}
 	private void processNode(AST.static_dispatch sd) {
 		AST.method m = null;
