@@ -30,7 +30,7 @@ public class ClassInfoTable{
 		methodName.put("type_name", "@_ZN6Object9type_name");
 		methodName.put("copy", "@_ZN6Object4copy");
 
-		classinfos.put("Object", new ClassInfo(null, new HashMap<String, AST.attr>(), methods, methodName, 0));
+		classinfos.put("Object", new ClassInfo(null, new HashMap<String, AST.attr>(), methods, methodName, 0, 0));
 	}
 	
 	private void assignIO(){
@@ -62,7 +62,7 @@ public class ClassInfoTable{
 		methodName.put("in_int", "@_ZN2IO9in_int");
 		//methodName.set("copy", "@_ZN2IO4copy");
 		
-		classinfos.put("IO", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1));
+		classinfos.put("IO", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 0));
 	}	
 	
 	private void assignInt(){
@@ -76,7 +76,7 @@ public class ClassInfoTable{
 		methodName.putAll(classinfos.get("Object").methodName);
 		//methodName.set("copy", "@_ZN3Int4copy");
 
-	    classinfos.put("Int", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1));
+	    classinfos.put("Int", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 4));
 	}
 	
 	private void assignBool(){
@@ -90,7 +90,7 @@ public class ClassInfoTable{
 		methodName.putAll(classinfos.get("Object").methodName);
 		//methodName.set("copy", "@_ZN4Bool4copy");
 
-	    classinfos.put("Bool", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1));
+	    classinfos.put("Bool", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 4));
 	}
 	
 	private void assignString(){
@@ -118,7 +118,7 @@ public class ClassInfoTable{
 		methodName.put("concat", "@_ZN6String6concat");
 		methodName.put("substr", "@_ZN6String6substr");
 		
-		classinfos.put("String", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1));
+		classinfos.put("String", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 4));
 	}
 
     // Insert this class into ClassTable after some error checks
@@ -133,15 +133,17 @@ public class ClassInfoTable{
 		ClassInfo pari = classinfos.get(par);
 		ClassInfo ci = null;
 		if (pari != null)
-		    ci = new ClassInfo(par, pari.attrMap, new HashMap<String, AST.method>(), pari.methodName, classinfos.get(par).depth + 1);
+		    ci = new ClassInfo(par, pari.attrMap, new HashMap<String, AST.method>(), pari.methodName, classinfos.get(par).depth + 1, 0);
 		else 
-            ci = new ClassInfo(par, new HashMap<String, AST.attr>(), new HashMap<String, AST.method>(), new HashMap<String, String>(), 0);
-            
+            ci = new ClassInfo(par, new HashMap<String, AST.attr>(), new HashMap<String, AST.method>(), new HashMap<String, String>(), 0, 0);
+        int size = classinfos.get(par).size;
 		for(AST.feature f : c.features) {
 			if (f instanceof AST.attr) {
 				AST.attr a = (AST.attr) f;
 				ci.attrMap.put(a.name, a);
 				ci.attrList.add(a.name);
+				if (a.typeid == "Int" || a.typeid == "Bool") size += 4;
+				else size += 8;
 			}
 			else if(f instanceof AST.method) {
 				AST.method m = (AST.method) f;
@@ -149,7 +151,7 @@ public class ClassInfoTable{
 				ci.methodName.put(m.name, "@_ZN"+c.name.length()+c.name+m.name.length()+m.name);
 			}
 		}
-
+		ci.size = size;
 		classinfos.put(c.name, ci);
 	}
 }

@@ -10,8 +10,9 @@ public class ClassInfo {
 	public HashMap <String, AST.attr> attrMap;
 	public HashMap <String, AST.method> methodMap;
 	public HashMap <String, String> methodName;
+	public int size = 0;
 
-	ClassInfo(String par, HashMap<String, AST.attr> alist, HashMap<String, AST.method> mlist, HashMap<String, String> mn, int d) {
+	ClassInfo(String par, HashMap<String, AST.attr> alist, HashMap<String, AST.method> mlist, HashMap<String, String> mn, int d, int s) {
 		parent = par;
 		attrMap = new HashMap <String, AST.attr>();
 		attrMap.putAll(alist);
@@ -24,5 +25,6 @@ public class ClassInfo {
 			attrList.add("_Par");
 		}
 		depth = d;
+		size = s;
 	}
 }
