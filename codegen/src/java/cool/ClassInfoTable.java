@@ -37,7 +37,7 @@ public class ClassInfoTable{
 		methodName.put("copy", "@_ZN6Object4copy");
 
         // Put this Class into classinfos
-		classinfos.put("Object", new ClassInfo(null, new HashMap<String, AST.attr>(), methods, methodName, 0, 0));
+		classinfos.put("Object", new ClassInfo(null, new HashMap<String, AST.attr>(), methods, methodName, 0, 12));
 	}
 	
 	// Function to create an entry for IO in ClassInfoTable
@@ -75,7 +75,7 @@ public class ClassInfoTable{
 		//methodName.set("copy", "@_ZN2IO4copy");
 		
 		// Put this Class into classinfos
-		classinfos.put("IO", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 0));
+		classinfos.put("IO", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 12));
 	}	
 	
 	// Function to create an entry for Int in ClassInfoTable
@@ -146,7 +146,7 @@ public class ClassInfoTable{
 		methodName.put("substr", "@_ZN6String6substr");
 		
 		// Put this Class into classinfos
-		classinfos.put("String", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 4));
+		classinfos.put("String", new ClassInfo("Object", new HashMap<String, AST.attr>(), methods, methodName, 1, 8));
 	}
 
     // Insert a class into the classinfos

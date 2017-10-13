@@ -20,6 +20,7 @@ public class Codegen{
         printHeaders(out);
         printClasses(program.classes, out);
         printMainFunc(out);
+        printStringMethods(out);
         out.println(globalStrings);
 	}
 
@@ -44,7 +45,7 @@ public class Codegen{
 		graph.put("IO", new ArrayList<String>());
 
         // Populate astClasses maps and strat creating Adjcacency list
-		for (AST.class_ c : classes){
+		for (AST.class_ c : classes) {
 			//System.out.println(c.name);
 			graph.put(c.name, new ArrayList <String> ());
 			astClasses.put(c.name, c);
@@ -91,6 +92,12 @@ public class Codegen{
 
 	// Print the LLVM-IR for each class declaration
 	void printClass(String c, PrintWriter out){
+
+		if (c.equals("Object")) {
+			out.println("%class.Object = type { i32, [1024 x i8] * }");
+			return;
+		}
+
 	    ClassInfo ci = classTable.classinfos.get(c);
 	    String attrsStr = "";
 	    for (String a : ci.attrList) {
@@ -117,7 +124,7 @@ public class Codegen{
 
 	String reverseParseType(String t){
 		if (t.equals("i32")) {
-			System.out.println("I will never come here");
+			System.out.println("I will never come here reverseParseType");
 			return "Int";
 		} else if (t.equals("[1024 x i8]*")) {
 			return "String";
@@ -126,14 +133,23 @@ public class Codegen{
 		}
 	}
 
+	String reverseParseTypeValue(String t) {
+		if (t.length() > 12 && t.substring(0, 12).equals("[1024 x i8]*")) {
+			return "[1024 x i8]*";
+		} else {
+			return t.split(" ")[0];
+		}
+	}
+
+	String reverseParseTypeValueVar(String t) {
+		String[] vals = t.split(" ");
+		return vals[vals.length-1];
+	}
+
 	// Print the constructor of te classes and print th inbuilt functions for Object, String, IO, Int, Bool
 	void printClassMethods(String c, PrintWriter out){
 		if (c.equals("Object")) {
 			printObjectMethods(out);
-			return;
-		}
-		if (c.equals("String")) {
-			printStringMethods(out);
 			return;
 		}
 		if (c.equals("IO")) {
@@ -175,7 +191,25 @@ public class Codegen{
 		    	out.println("\tstore "+parseType(a.typeid)+" null, "+parseType(a.typeid)+"* %"+varCount+", align 4");
 		    }
 	    }
-	    out.println("\tret i32 0");
+	    String caller = parseType(c)+" %self";
+	    ClassInfo ci2 = ci;
+	    while (!reverseParseTypeValue(caller).equals(parseType("Object"))) {
+			String par = parseType(ci2.parent);
+			par = par.substring(0, par.length()-1);
+			String ty = reverseParseTypeValue(caller);
+			ty = ty.substring(0, ty.length()-1);
+			out.println("\t%"+(++varCount)+" = getelementptr inbounds "+ty+", "+ty+"* "+reverseParseTypeValueVar(caller)+", i32 0, i32 0");
+			caller = par+"* %"+varCount;
+			ci2 = classTable.classinfos.get(ci2.parent);
+		}
+		out.println("\t%"+(++varCount)+" = getelementptr inbounds %class.Object, %class.Object* "+reverseParseTypeValueVar(caller)+", i32 0, i32 0");
+		out.println("\tstore i32 "+ci.size+", i32* %"+varCount);
+		String ty = "["+(c.length()+1)+" x i8]";
+		globalStrings += "@.str"+(strCount++)+" = private unnamed_addr constant "+ty+" c\""+c+"\\00\", align 1\n";
+		out.println("\t%"+(++varCount)+" = bitcast "+ty+"* @.str"+(strCount-1)+" to [1024 x i8]*");
+		out.println("\t%"+(++varCount)+" = getelementptr inbounds %class.Object, %class.Object* "+reverseParseTypeValueVar(caller)+", i32 0, i32 1");
+		out.println("\tstore [1024 x i8]* %"+(varCount-1)+", [1024 x i8]** %"+varCount);
+		out.println("\tret i32 0");
 	    out.println("}\n");
 	    
 	    for (Map.Entry<String, AST.method> entry : ci.methodMap.entrySet()) {
@@ -193,7 +227,7 @@ public class Codegen{
 	        ifCount = -1;
 	        List<String> changedFormals = new ArrayList<>();
 	        String ret = printExpr(c, m, m.body, changedFormals, out);
-	        String rettype = ret.split(" ")[0];
+	        String rettype = reverseParseTypeValue(ret);
 	        if (!rettype.equals(parseType(m.typeid))) {
 	        	if (rettype.equals("i32")) {
 	        		out.println("\t%"+(++varCount)+" = call noalias i8* @malloc(i64 8)"); // Object size
@@ -337,7 +371,7 @@ public class Codegen{
 			String type = parseType(e.type);
 			String stype = parseType(cname);
 			stype = stype.substring(0, stype.length()-1);
-			String e1type = e1.split(" ")[0];
+			String e1type = reverseParseTypeValue(e1);
 	        if (!e1type.equals(type)) {
 	        	if (e1type.equals("i32")) {
 	        		out.println("\t%"+(++varCount)+" = call noalias i8* @malloc(i64 8)"); // Object size
@@ -389,12 +423,12 @@ public class Codegen{
 			out.println();
 			out.println("if.then"+ifcnt+":");
 			String ifbody = printExpr(cname, method, e.ifbody, changedFormals, out);
-			ifbody = ifbody.split(" ")[1];
+			ifbody = reverseParseTypeValueVar(ifbody);
 			out.println("\tbr label %if.end"+ifcnt);
 			out.println();
 			out.println("if.else"+ifcnt+":");
 			String elsebody = printExpr(cname, method, e.elsebody, changedFormals, out);
-			elsebody = elsebody.split(" ")[1];
+			elsebody = reverseParseTypeValueVar(elsebody);
 			out.println("\tbr label %if.end"+ifcnt);
 			out.println();
 			out.println("if.end"+ifcnt+":");
@@ -421,13 +455,13 @@ public class Codegen{
 			out.println();
 			out.println("if.else"+ifCount+":");
 			String funcname = "@_ZN"+e.typeid.length()+e.typeid+e.name.length()+e.name;
-			ClassInfo ci2 = classTable.classinfos.get(reverseParseType(caller.split(" ")[0]));
-			while (!caller.split(" ")[0].equals(parseType(e.typeid))) {
+			ClassInfo ci2 = classTable.classinfos.get(reverseParseType(reverseParseTypeValue(caller)));
+			while (!reverseParseTypeValue(caller).equals(parseType(e.typeid))) {
 				String par = parseType(ci2.parent);
 				par = par.substring(0, par.length()-1);
-				String ty = caller.split(" ")[0];
+				String ty = reverseParseTypeValue(caller);
 				ty = ty.substring(0, ty.length()-1);
-				out.println("\t%"+(++varCount)+" = getelementptr inbounds "+ty+", "+ty+"* "+caller.split(" ")[1]+", i32 0, i32 0");
+				out.println("\t%"+(++varCount)+" = getelementptr inbounds "+ty+", "+ty+"* "+reverseParseTypeValueVar(caller)+", i32 0, i32 0");
 				caller = par+"* %"+varCount;
 				ci2 = classTable.classinfos.get(ci2.parent);
 			}
@@ -457,6 +491,7 @@ public class Codegen{
 			+ "declare i8* @malloc(i64)\n"
 			+ "declare void @exit(i32)");
 		out.println("@strformatstr = private unnamed_addr constant [3 x i8] c\"%s\\00\", align 1\n"
+			+ "@instrformatstr = private unnamed_addr constant [7 x i8] c\"%[^\\0A]s\\00\", align 1\n"
 			+ "@intformatstr = private unnamed_addr constant [3 x i8] c\"%d\\00\", align 1\n");
 	}
 
@@ -472,14 +507,13 @@ public class Codegen{
 			+ "\tret %class.Object* null\n"
 			+ "}\n");
 
-		// out.println("define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %self ) {\n"
-		// 	+ "entry:\n"
-		// 	+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %self, i32 0, i32 0\n"
-		// 	+ "\t%1 = load i32, i32* %0\n"
-		// 	+ "\t%2 = getelementptr inbounds [8 x [1024 x i8]], [8 x [1024 x i8]]* @classnames, i32 0, i32 %1\n"
-		// 	+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %2 )\n"
-		// 	+ "\tret [1024 x i8]* %retval\n"
-		// 	+ "}\n");
+		out.println("define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %self ) {\n"
+			+ "entry:\n"
+			+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %self, i32 0, i32 1\n"
+			+ "\t%1 = load [1024 x i8]*, [1024 x i8]** %0\n"
+			+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %1 )\n"
+			+ "\tret [1024 x i8]* %retval\n"
+			+ "}\n");
 
 		// out.println("define %class.Object* @_ZN6Object4copy( %class.Object* %self ) {\n"
 		// 	+ "entry:\n"
@@ -559,11 +593,11 @@ public class Codegen{
 			+ "entry:\n"
 			+ "\t%0 = call i8* @malloc( i64 1024 )\n"
 			+ "\t%retval = bitcast i8* %0 to [1024 x i8]*\n"
-			+ "\t%1 = call i32 (i8*, ...) @scanf( i8* bitcast ( [3 x i8]* @strformatstr to i8* ), [1024 x i8]* %retval )\n"
+			+ "\t%1 = call i32 (i8*, ...) @scanf( i8* bitcast ( [7 x i8]* @instrformatstr to i8* ), [1024 x i8]* %retval )\n"
 			+ "\tret [1024 x i8]* %retval\n"
 			+ "}\n");
 	
-		out.println("define i32 @_ZN2IO9in_int( %class.IO* %self ) {\n"
+		out.println("define i32 @_ZN2IO6in_int( %class.IO* %self ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i8* @malloc( i64 4 )\n"
 			+ "\t%1 = bitcast i8* %0 to i32*\n"
