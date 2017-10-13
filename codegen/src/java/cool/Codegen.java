@@ -146,7 +146,9 @@ public class Codegen{
 	    String formals = parseType(c)+" %self";
 	    out.println("define i32 @_ZN"+c.length()+c+8+"__cons__( "+formals+" ) {");
 	    out.println("entry:");
-	    varCount = -1;
+	   	varCount = -1;
+        loopCount = -1;
+        ifCount = -1;
 	    for (Map.Entry<String, AST.attr> entry : ci.attrMap.entrySet()) {
 	    	AST.attr a = entry.getValue();
 	    	if (!(a.value instanceof AST.no_expr)) {
@@ -165,6 +167,12 @@ public class Codegen{
 		    	AST.assign exp = new AST.assign(a.name, new AST.string_const("", 0), 0);
 		    	exp.type = "String";
 		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    } else {
+		    	int attri = ci.attrList.indexOf(a.name);
+		    	String ctype = parseType(c);
+		    	ctype = ctype.substring(0, ctype.length()-1);
+		    	out.println("\t%"+(++varCount)+" = getelementptr inbounds "+ctype+", "+ctype+"* %self, i32 0, i32 "+attri);
+		    	out.println("\tstore "+parseType(a.typeid)+" null, "+parseType(a.typeid)+"* %"+varCount+", align 4");
 		    }
 	    }
 	    out.println("\tret i32 0");
@@ -268,6 +276,17 @@ public class Codegen{
 			AST.divide e = (AST.divide) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			out.println("\t%"+(++varCount)+" = icmp eq i32 0, "+e2.substring(4));
+			ifCount++;
+			out.println("\tbr i1 %"+varCount+", label %if.then"+ifCount+", label %if.else"+ifCount);
+			out.println();
+			out.println("if.then"+ifCount+":");
+			out.println("\t%"+(++varCount)+" = bitcast [22 x i8]* @Abortdivby0 to [1024 x i8]*");
+			out.println("\t%"+(++varCount)+" = call %class.IO* @_ZN2IO10out_string( %class.IO* null, [1024 x i8]* %"+(varCount-1)+")");
+			out.println("\tcall void @exit(i32 1)");
+			out.println("\tbr label %if.else"+ifCount);
+			out.println();
+			out.println("if.else"+ifCount+":");
 			out.println("\t%"+(++varCount)+" = sdiv i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.mul) {
@@ -390,6 +409,17 @@ public class Codegen{
 				String a = printExpr(cname, method, actual, changedFormals, out);
 				actuals.add(a);
 			}
+			ifCount++;
+			out.println("\t%"+(++varCount)+" = icmp eq "+caller+", null");
+			out.println("\tbr i1 %"+varCount+", label %if.then"+ifCount+", label %if.else"+ifCount);
+			out.println();
+			out.println("if.then"+ifCount+":");
+			out.println("\t%"+(++varCount)+" = bitcast [25 x i8]* @Abortdispvoid to [1024 x i8]*");
+			out.println("\t%"+(++varCount)+" = call %class.IO* @_ZN2IO10out_string( %class.IO* null, [1024 x i8]* %"+(varCount-1)+")");
+			out.println("\tcall void @exit(i32 1)");
+			out.println("\tbr label %if.else"+ifCount);
+			out.println();
+			out.println("if.else"+ifCount+":");
 			String funcname = "@_ZN"+e.typeid.length()+e.typeid+e.name.length()+e.name;
 			ClassInfo ci2 = classTable.classinfos.get(reverseParseType(caller.split(" ")[0]));
 			while (!caller.split(" ")[0].equals(parseType(e.typeid))) {
@@ -416,7 +446,7 @@ public class Codegen{
 		out.println("target datalayout = \"e-m:e-i64:64-f80:128-n8:16:32:64-S128\"");
 		out.println("target triple = \"x86_64-unknown-linux-gnu\"");
 		out.println("@Abortdivby0 = private unnamed_addr constant [22 x i8] c\"Error: Division by 0\\0A\\00\", align 1\n"
-			+ "@Abortdispvoid = private unnamed_addr constant [25 x i8] c\"Error: Dispatch on void\\0A\\00\", align 1\n");
+			+ "@Abortdispvoid = private unnamed_addr constant [25 x i8] c\"Error: Dispatch to void\\0A\\00\", align 1\n");
 		out.println("declare i32 @printf(i8*, ...)\n"
 			+ "declare i32 @scanf(i8*, ...)\n"
 			+ "declare i32 @strcmp(i8*, i8*)\n"
@@ -431,6 +461,11 @@ public class Codegen{
 	}
 
 	void printObjectMethods(PrintWriter out) {
+		out.println("define i32 @_ZN6Object8__cons__( %class.Object* %self ) noreturn {\n"
+			+ "entry:\n"
+			+"\tret i32 0\n"
+			+"}\n");
+
 		out.println("define %class.Object* @_ZN6Object5abort( %class.Object* %self ) noreturn {\n"
 			+ "entry:\n"
 			+ "\tcall void @exit( i32 1 )\n"
@@ -503,6 +538,11 @@ public class Codegen{
 	}
 
 	void printIOMethods(PrintWriter out) {
+		out.println("define i32 @_ZN2IO8__cons__( %class.IO* %self ) noreturn {\n"
+			+ "entry:\n"
+			+"\tret i32 0\n"
+			+"}\n");
+
 		out.println("define %class.IO* @_ZN2IO10out_string( %class.IO* %self, [1024 x i8]* %str ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i32 (i8*, ...) @printf( i8* bitcast ( [3 x i8]* @strformatstr to i8* ), [1024 x i8]* %str )\n"
