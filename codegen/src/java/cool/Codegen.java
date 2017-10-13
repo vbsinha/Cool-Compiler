@@ -27,6 +27,7 @@ public class Codegen{
 		out.println("define i32 @main() {\n"
 			+"entry:\n"
 			+"\t%0 = alloca %class.Main, align 4\n"
+			+"\tcall i32 @_ZN4Main8__cons__(%class.Main* %0)\n"
 			+"\tcall "+mainReturnType+" @_ZN4Main4main(%class.Main* %0)\n"
 			+"\tret i32 0\n"
 			+"}");
@@ -44,7 +45,7 @@ public class Codegen{
 
         // Populate astClasses maps and strat creating Adjcacency list
 		for (AST.class_ c : classes){
-			//System.out.println(c.name);		
+			//System.out.println(c.name);
 			graph.put(c.name, new ArrayList <String> ());
 			astClasses.put(c.name, c);
 		}
@@ -64,7 +65,6 @@ public class Codegen{
 		q.offer("Object"); // Add root Class
 		while(q.isEmpty() == false){
 			String c = q.poll();
-			// classTable.insert(astClasses.get(c));
 			if (!c.equals("Object") && !c.equals("IO")) 
 				classTable.insert(astClasses.get(c));
 			printClass(c, out);
@@ -142,10 +142,37 @@ public class Codegen{
 		}
 
 	    ClassInfo ci = classTable.classinfos.get(c);
+
+	    String formals = parseType(c)+" %self";
+	    out.println("define i32 @_ZN"+c.length()+c+8+"__cons__( "+formals+" ) {");
+	    out.println("entry:");
+	    varCount = -1;
+	    for (Map.Entry<String, AST.attr> entry : ci.attrMap.entrySet()) {
+	    	AST.attr a = entry.getValue();
+	    	if (!(a.value instanceof AST.no_expr)) {
+		    	AST.assign exp = new AST.assign(a.name, a.value, 0);
+		    	exp.type = a.typeid;
+		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    } else if (a.typeid.equals("Int")) {
+		    	AST.assign exp = new AST.assign(a.name, new AST.int_const(0, 0), 0);
+		    	exp.type = "Int";
+		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    } else if (a.typeid.equals("Bool")) {
+		    	AST.assign exp = new AST.assign(a.name, new AST.bool_const(false, 0), 0);
+		    	exp.type = "Bool";
+		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    } else if (a.typeid.equals("String")) {
+		    	AST.assign exp = new AST.assign(a.name, new AST.string_const("", 0), 0);
+		    	exp.type = "String";
+		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    }
+	    }
+	    out.println("\tret i32 0");
+	    out.println("}\n");
 	    
-	    for (Map.Entry<String, AST.method> entry : ci.methodMap.entrySet()){
+	    for (Map.Entry<String, AST.method> entry : ci.methodMap.entrySet()) {
 	    	AST.method m = entry.getValue();
-	    	String formals = "%class."+c+"* %self";
+	    	formals = "%class."+c+"* %self";
 	    	for (AST.formal f : m.formals) {
 	    		formals += ", "+parseType(f.typeid)+" %"+f.name;
 	    	}
@@ -169,8 +196,7 @@ public class Codegen{
 	        	ret = parseType(m.typeid)+" %"+varCount;
 	        }
 	        out.println("\tret "+ret);
-	        out.println("}");
-	        out.println();
+	        out.println("}\n");
 	    }
 	}
 
@@ -209,7 +235,7 @@ public class Codegen{
 			String parseTypeName = parseType(cname);
 			parseTypeName = parseTypeName.substring(0, parseTypeName.length()-1);
 			out.println("\t%"+(++varCount)+" = getelementptr inbounds "+parseTypeName+", "+parseTypeName+"* %self, i32 0, i32 "+attri);
-			out.println("\t%"+(++varCount)+" = load "+parseType(e.type)+", "+parseType(e.type)+"* %"+(varCount-1)+", align 8");
+			out.println("\t%"+(++varCount)+" = load "+parseType(e.type)+", "+parseType(e.type)+"* %"+(varCount-1)+", align 4");
 			return parseType(e.type)+" %"+varCount;
 		} else if (expr instanceof AST.comp) {
 			AST.comp e = (AST.comp) expr;
@@ -270,20 +296,23 @@ public class Codegen{
 		} else if (expr instanceof AST.new_) {
 			AST.new_ e = (AST.new_) expr;
 			String type = parseType(e.typeid);
-			// out.println("\t%"+(++varCount)+" = alloca "+type+", align 8");
+			// out.println("\t%"+(++varCount)+" = alloca "+type+", align 4");
 			int size = classTable.classinfos.get(e.typeid).size;
 			out.println("\t%"+(++varCount)+" = call noalias i8* @malloc(i64 "+size+")");
 			out.println("\t%"+(++varCount)+" = bitcast i8* %"+(varCount-1)+" to "+type);
-			// out.println("\tstore "+type+" %"+varCount+", "+type+"* %"+(varCount-2)+", align 8");
-			return type+" %"+varCount;
+			out.println("\t%"+(++varCount)+" = call i32 @_ZN"+e.typeid.length()+e.typeid+8+"__cons__( "+type+" %"+(varCount-1)+" )");
+			// out.println("\tstore "+type+" %"+varCount+", "+type+"* %"+(varCount-2)+", align 4");
+			return type+" %"+(varCount-1);
 		} else if (expr instanceof AST.assign) {
 			AST.assign e = (AST.assign) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
 			int attri = ci.attrList.indexOf(e.name);
-			for (AST.formal f : method.formals) {
-				if (f.name.equals(e.name)) {
-					attri = -1;
-					break;
+			if (method != null) {
+				for (AST.formal f : method.formals) {
+					if (f.name.equals(e.name)) {
+						attri = -1;
+						break;
+					}
 				}
 			}
 			String type = parseType(e.type);
@@ -304,11 +333,11 @@ public class Codegen{
 					out.println("%"+e.name+".addr = alloca i32, align 4");
 					changedFormals.add(e.name);
 				}
-				out.println("\tstore "+e1+", "+type+"* %"+e.name+".addr, align 8");
+				out.println("\tstore "+e1+", "+type+"* %"+e.name+".addr, align 4");
 				return e1;
 			} else {
 				out.println("\t%"+(++varCount)+" = getelementptr inbounds "+stype+", "+stype+"* %self, i32 0, i32 "+attri);
-				out.println("\tstore "+e1+", "+type+"* %"+varCount+", align 8");
+				out.println("\tstore "+e1+", "+type+"* %"+varCount+", align 4");
 				return e1;
 			}
 		} else if (expr instanceof AST.block) {
@@ -402,22 +431,22 @@ public class Codegen{
 	}
 
 	void printObjectMethods(PrintWriter out) {
-		out.println("define %class.Object* @_ZN6Object5abort( %class.Object* %this ) noreturn {\n"
+		out.println("define %class.Object* @_ZN6Object5abort( %class.Object* %self ) noreturn {\n"
 			+ "entry:\n"
 			+ "\tcall void @exit( i32 1 )\n"
 			+ "\tret %class.Object* null\n"
 			+ "}\n");
 
-		// out.println("define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %this ) {\n"
+		// out.println("define [1024 x i8]* @_ZN6Object9type_name( %class.Object* %self ) {\n"
 		// 	+ "entry:\n"
-		// 	+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 0\n"
+		// 	+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %self, i32 0, i32 0\n"
 		// 	+ "\t%1 = load i32, i32* %0\n"
 		// 	+ "\t%2 = getelementptr inbounds [8 x [1024 x i8]], [8 x [1024 x i8]]* @classnames, i32 0, i32 %1\n"
 		// 	+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %2 )\n"
 		// 	+ "\tret [1024 x i8]* %retval\n"
 		// 	+ "}\n");
 
-		// out.println("define %class.Object* @_ZN6Object4copy( %class.Object* %this ) {\n"
+		// out.println("define %class.Object* @_ZN6Object4copy( %class.Object* %self ) {\n"
 		// 	+ "entry:\n"
 		// 	+ "\t%call = call i8* @malloc( i64 32 )\n"
 		// 	+ "\t%retval = bitcast i8* %call to %class.Object*\n"
@@ -426,43 +455,43 @@ public class Codegen{
 		// 	+ "\t%1 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 1\n"
 		// 	+ "\tstore i8* bitcast ( [3 x i8*]* @VTObject to i8*), i8** %1\n"
 		// 	+ "\t%2 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 2\n"
-		// 	+ "\t%3 = getelementptr inbounds %class.Object, %class.Object* %this, i32 0, i32 2\n"
+		// 	+ "\t%3 = getelementptr inbounds %class.Object, %class.Object* %self, i32 0, i32 2\n"
 		// 	+ "\tcall void @_ZN6Object4copyTo( %classbaseObject* %2, %classbaseObject* %3 )\n"
 		// 	+ "\tret %class.Object* %retval\n"
 		// 	+ "}\n");
 	}
 
 	void printStringMethods(PrintWriter out) {
-		out.println("define i32 @_ZN6String6length( [1024 x i8]* %this ) {\n"
+		out.println("define i32 @_ZN6String6length( [1024 x i8]* %self ) {\n"
 			+ "\tentry:\n"
-			+ "\t%0 = bitcast [1024 x i8]* %this to i8*\n"
+			+ "\t%0 = bitcast [1024 x i8]* %self to i8*\n"
 			+ "\t%1 = call i64 @strlen( i8* %0 )\n"
 			+ "\t%retval = trunc i64 %1 to i32\n"
 			+ "\tret i32 %retval\n"
 			+ "}\n");
 
-		out.println("define [1024 x i8]* @_ZN6String6concat( [1024 x i8]* %this, [1024 x i8]* %that ) {\n"
+		out.println("define [1024 x i8]* @_ZN6String6concat( [1024 x i8]* %self, [1024 x i8]* %that ) {\n"
 			+ "entry:\n"
-			+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %this )\n"
+			+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %self )\n"
 			+ "\t%0 = bitcast [1024 x i8]* %retval to i8*\n"
 			+ "\t%1 = bitcast [1024 x i8]* %that to i8*\n"
 			+ "\t%2 = call i8* @strcat( i8* %0, i8* %1 )\n"
 			+ "\tret [1024 x i8]* %retval\n"
 			+ "}\n");
 
-		out.println("define [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %this ) {\n"
+		out.println("define [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %self ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i8* @malloc( i64 1024 )\n"
 			+ "\t%retval = bitcast i8* %0 to [1024 x i8]*\n"
-			+ "\t%1 = bitcast [1024 x i8]* %this to i8*\n"
+			+ "\t%1 = bitcast [1024 x i8]* %self to i8*\n"
 			+ "\t%2 = bitcast [1024 x i8]* %retval to i8*\n"
 			+ "\t%3 = call i8* @strcpy( i8* %2, i8* %1)\n"
 			+ "\tret [1024 x i8]* %retval\n"
 			+ "}\n");
 
-		out.println("define [1024 x i8]* @_ZN6String6substr( [1024 x i8]* %this, i32 %start, i32 %len ) {\n"
+		out.println("define [1024 x i8]* @_ZN6String6substr( [1024 x i8]* %self, i32 %start, i32 %len ) {\n"
 			+ "entry:\n"
-			+ "\t%0 = getelementptr inbounds [1024 x i8], [1024 x i8]* %this, i32 0, i32 %start\n"
+			+ "\t%0 = getelementptr inbounds [1024 x i8], [1024 x i8]* %self, i32 0, i32 %start\n"
 			+ "\t%1 = call i8* @malloc( i64 1024 )\n"
 			+ "\t%retval = bitcast i8* %1 to [1024 x i8]*\n"
 			+ "\t%2 = bitcast [1024 x i8]* %retval to i8*\n"
@@ -474,19 +503,19 @@ public class Codegen{
 	}
 
 	void printIOMethods(PrintWriter out) {
-		out.println("define %class.IO* @_ZN2IO10out_string( %class.IO* %this, [1024 x i8]* %str ) {\n"
+		out.println("define %class.IO* @_ZN2IO10out_string( %class.IO* %self, [1024 x i8]* %str ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i32 (i8*, ...) @printf( i8* bitcast ( [3 x i8]* @strformatstr to i8* ), [1024 x i8]* %str )\n"
-			+ "\tret %class.IO* %this\n"
+			+ "\tret %class.IO* %self\n"
 			+ "}\n");
 	
-		out.println("define %class.IO* @_ZN2IO7out_int( %class.IO* %this, i32 %int ) {\n"
+		out.println("define %class.IO* @_ZN2IO7out_int( %class.IO* %self, i32 %int ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i32 (i8*, ...) @printf( i8* bitcast ( [3 x i8]* @intformatstr to i8* ), i32 %int )\n"
-			+ "\tret %class.IO* %this\n"
+			+ "\tret %class.IO* %self\n"
 			+ "}\n");
 	
-		out.println("define [1024 x i8]* @_ZN2IO9in_string( %class.IO* %this ) {\n"
+		out.println("define [1024 x i8]* @_ZN2IO9in_string( %class.IO* %self ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i8* @malloc( i64 1024 )\n"
 			+ "\t%retval = bitcast i8* %0 to [1024 x i8]*\n"
@@ -494,7 +523,7 @@ public class Codegen{
 			+ "\tret [1024 x i8]* %retval\n"
 			+ "}\n");
 	
-		out.println("define i32 @_ZN2IO9in_int( %class.IO* %this ) {\n"
+		out.println("define i32 @_ZN2IO9in_int( %class.IO* %self ) {\n"
 			+ "entry:\n"
 			+ "\t%0 = call i8* @malloc( i64 4 )\n"
 			+ "\t%1 = bitcast i8* %0 to i32*\n"

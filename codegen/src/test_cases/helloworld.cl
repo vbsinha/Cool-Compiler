@@ -17,6 +17,7 @@ class Main {
 	};
 	main() : Object {
 		{
+			c@A.b();
 			c <- new C;
 			self@Main.main2(5, 6);
 			a <- 6;

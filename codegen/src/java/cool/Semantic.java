@@ -41,6 +41,29 @@ public class Semantic{
 		}
 		
 		for(AST.class_ e : program.classes) {
+
+			// List<AST.expression> exprs = new ArrayList<>();
+			// for (AST.feature f : e.features) {
+			// 	if (f instanceof AST.attr) {
+			// 		AST.attr a = (AST.attr) f;
+			// 		if (!(a.value instanceof AST.no_expr))
+			// 			exprs.add(new AST.assign(a.name, a.value, 0));
+			// 		else {
+			// 			if (a.typeid.equals("Int")) {
+			// 				exprs.add(new AST.assign(a.name, new AST.int_const(0, 0), 0));
+			// 			} else if (a.typeid.equals("Bool")) {
+			// 				exprs.add(new AST.assign(a.name, new AST.bool_const(false, 0), 0));
+			// 			} else if (a.typeid.equals("String")) {
+			// 				exprs.add(new AST.assign(a.name, new AST.string_const("", 0), 0));
+			// 			}
+			// 		}
+			// 	}
+			// }
+			// exprs.add(new AST.int_const(0, 0));
+			// AST.expression cexpr = new AST.block(exprs, 0);
+			// AST.method constructor = new AST.method("__cons__", new ArrayList<>(), "Int", cexpr, 0);
+			// e.features.add(constructor);		
+
 			filename = e.filename;				// filename for each class	
 			scopeTable.enterScope();			// enter new scope for a class
 			scopeTable.insert("self", new AST.attr("self", e.name, new AST.no_expr(e.lineNo), e.lineNo));		// self is available as attribute within the class

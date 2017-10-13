@@ -10,10 +10,7 @@ class A {
 };
 
 class B {
-	a : A;
-	init() : Int {
-		{a <- new A; 1;}
-	};
+	a : A <- new A;
 	set(i : Int) : Int {
 		a@A.set(i)
 		-- 4
@@ -24,24 +21,16 @@ class B {
 };
 
 class Main inherits IO {
-	a : B;
-	b : B;
-	c : A;
-	d : A;
-	init() : Int {
-		{
-			a <- new B;
-			a@B.init();
-			b <- new B;
-			b@B.init();
-			c <- new A;
-			d <- new A;
-			1;
-		}
-	};
+	a : B <- new B;
+	b : B <- new B;
+	c : A <- new A;
+	d : A <- new A;
+	e : String;
 	main() : IO {
 		{
-			self@Main.init();
+			self@IO.out_string(e);
+			e <- "Hello";
+			self@IO.out_string(e);
 			a@B.set(5);
 			b@B.set(3);
 			a <- b;
