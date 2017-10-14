@@ -165,24 +165,25 @@ public class Codegen{
 	   	varCount = -1;
         loopCount = -1;
         ifCount = -1;
+        List<String> blocks = new ArrayList<>();
 	    for (Map.Entry<String, AST.attr> entry : ci.attrMap.entrySet()) {
 	    	AST.attr a = entry.getValue();
 	    	if (!(a.value instanceof AST.no_expr)) {
 		    	AST.assign exp = new AST.assign(a.name, a.value, 0);
 		    	exp.type = a.typeid;
-		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    	printExpr(c, null, exp, new ArrayList<>(), blocks, out);
 		    } else if (a.typeid.equals("Int")) {
 		    	AST.assign exp = new AST.assign(a.name, new AST.int_const(0, 0), 0);
 		    	exp.type = "Int";
-		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    	printExpr(c, null, exp, new ArrayList<>(), blocks, out);
 		    } else if (a.typeid.equals("Bool")) {
 		    	AST.assign exp = new AST.assign(a.name, new AST.bool_const(false, 0), 0);
 		    	exp.type = "Bool";
-		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    	printExpr(c, null, exp, new ArrayList<>(), blocks, out);
 		    } else if (a.typeid.equals("String")) {
 		    	AST.assign exp = new AST.assign(a.name, new AST.string_const("", 0), 0);
 		    	exp.type = "String";
-		    	printExpr(c, null, exp, new ArrayList<>(), out);
+		    	printExpr(c, null, exp, new ArrayList<>(), blocks, out);
 		    } else {
 		    	int attri = ci.attrList.indexOf(a.name);
 		    	String ctype = parseType(c);
@@ -218,15 +219,23 @@ public class Codegen{
 	    	for (AST.formal f : m.formals) {
 	    		formals += ", "+parseType(f.typeid)+" %"+f.name;
 	    	}
+	    	blocks.clear();
 	    	if (c.equals("Main") && entry.getKey().equals("main"))
 	    		mainReturnType = parseType(m.typeid);
 	        out.println("define "+parseType(m.typeid)+" "+ci.methodName.get(entry.getKey())+"( "+formals+" )" + "{");
 	        out.println("entry:");
+	        blocks.add("entry");
 	        varCount = -1;
 	        loopCount = -1;
 	        ifCount = -1;
 	        List<String> changedFormals = new ArrayList<>();
-	        String ret = printExpr(c, m, m.body, changedFormals, out);
+			for (AST.formal f : m.formals) {
+				String type = parseType(f.typeid);
+				out.println("%"+f.name+".addr = alloca "+type+", align 4");
+				changedFormals.add(f.name);
+				out.println("\tstore "+type+" %"+f.name+", "+type+"* %"+f.name+".addr, align 4");
+			}
+	        String ret = printExpr(c, m, m.body, changedFormals, blocks, out);
 	        String rettype = reverseParseTypeValue(ret);
 	        if (!rettype.equals(parseType(m.typeid))) {
 	        	if (rettype.equals("i32")) {
@@ -242,7 +251,7 @@ public class Codegen{
 	    }
 	}
 
-	String printExpr(String cname, AST.method method, AST.expression expr, List<String> changedFormals, PrintWriter out) {
+	String printExpr(String cname, AST.method method, AST.expression expr, List<String> changedFormals, List<String> blocks, PrintWriter out) {
 		ClassInfo ci = classTable.classinfos.get(cname);
 		if (expr instanceof AST.bool_const) {
 			AST.bool_const e = (AST.bool_const) expr;
@@ -281,69 +290,71 @@ public class Codegen{
 			return parseType(e.type)+" %"+varCount;
 		} else if (expr instanceof AST.comp) {
 			AST.comp e = (AST.comp) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = sub nsw i32 1, " + e1.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.eq) {
 			AST.eq e = (AST.eq) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp eq i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.leq) {
 			AST.leq e = (AST.leq) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp sle i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.lt) {
 			AST.lt e = (AST.lt) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp slt i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.neg) {
 			AST.neg e = (AST.neg) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = sub nsw i32 0, " + e1.substring(4));
 		} else if (expr instanceof AST.divide) {
 			AST.divide e = (AST.divide) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp eq i32 0, "+e2.substring(4));
 			ifCount++;
 			out.println("\tbr i1 %"+varCount+", label %if.then"+ifCount+", label %if.else"+ifCount);
 			out.println();
 			out.println("if.then"+ifCount+":");
+			blocks.add("if.then"+ifCount);
 			out.println("\t%"+(++varCount)+" = bitcast [22 x i8]* @Abortdivby0 to [1024 x i8]*");
 			out.println("\t%"+(++varCount)+" = call %class.IO* @_ZN2IO10out_string( %class.IO* null, [1024 x i8]* %"+(varCount-1)+")");
 			out.println("\tcall void @exit(i32 1)");
 			out.println("\tbr label %if.else"+ifCount);
 			out.println();
 			out.println("if.else"+ifCount+":");
+			blocks.add("if.else"+ifCount);
 			out.println("\t%"+(++varCount)+" = sdiv i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.mul) {
 			AST.mul e = (AST.mul) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = mul nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.sub) {
 			AST.sub e = (AST.sub) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = sub nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.plus) {
 			AST.plus e = (AST.plus) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
-			String e2 = printExpr(cname, method, e.e2, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
+			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = add nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.isvoid) {
 			AST.isvoid e = (AST.isvoid) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp eq "+e1+", null");
 			return "i32 %"+varCount;
 		} else if (expr instanceof AST.new_) {
@@ -358,7 +369,7 @@ public class Codegen{
 			return type+" %"+(varCount-1);
 		} else if (expr instanceof AST.assign) {
 			AST.assign e = (AST.assign) expr;
-			String e1 = printExpr(cname, method, e.e1, changedFormals, out);
+			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			int attri = ci.attrList.indexOf(e.name);
 			if (method != null) {
 				for (AST.formal f : method.formals) {
@@ -397,7 +408,7 @@ public class Codegen{
 			AST.block e = (AST.block) expr;
 			String re = "";
 			for (AST.expression ex : e.l1) {
-				re = printExpr(cname, method, ex, changedFormals, out);
+				re = printExpr(cname, method, ex, changedFormals, blocks, out);
 			}
 			return re;
 		} else if (expr instanceof AST.loop) {
@@ -406,41 +417,49 @@ public class Codegen{
 			out.println("\tbr label %loop.cond"+loopcnt);
 			out.println();
 			out.println("loop.cond"+loopcnt+":");
-			String pred = printExpr(cname, method, e.predicate, changedFormals, out);
+			blocks.add("loop.cond"+loopcnt);
+			String pred = printExpr(cname, method, e.predicate, changedFormals, blocks, out);
 			out.println("\tbr i1 "+pred.substring(4)+", label %loop.body"+loopcnt+" , label %loop.end"+loopcnt);
 			out.println();
 			out.println("loop.body"+loopcnt+":");
-			String body = printExpr(cname, method, e.body, changedFormals, out);
+			blocks.add("loop.body"+loopcnt);
+			String body = printExpr(cname, method, e.body, changedFormals, blocks, out);
 			out.println("\tbr label %loop.cond"+loopcnt);
 			out.println();
 			out.println("loop.end"+loopcnt+":");
+			blocks.add("loop.end"+loopcnt);
 			return body;
 		} else if (expr instanceof AST.cond) {
 			AST.cond e = (AST.cond) expr;
 			int ifcnt = ++ifCount;
-			String pred = printExpr(cname, method, e.predicate, changedFormals, out);
+			String pred = printExpr(cname, method, e.predicate, changedFormals, blocks, out);
 			out.println("\tbr i1 "+pred.substring(4)+", label %if.then"+ifcnt+", label %if.else"+ifcnt);
 			out.println();
 			out.println("if.then"+ifcnt+":");
-			String ifbody = printExpr(cname, method, e.ifbody, changedFormals, out);
+			blocks.add("if.then"+ifcnt);
+			String ifbody = printExpr(cname, method, e.ifbody, changedFormals, blocks, out);
+			String ifbodylabel = blocks.get(blocks.size()-1);
 			ifbody = reverseParseTypeValueVar(ifbody);
 			out.println("\tbr label %if.end"+ifcnt);
 			out.println();
 			out.println("if.else"+ifcnt+":");
-			String elsebody = printExpr(cname, method, e.elsebody, changedFormals, out);
+			blocks.add("if.else"+ifcnt);
+			String elsebody = printExpr(cname, method, e.elsebody, changedFormals, blocks, out);
+			String elsebodylabel = blocks.get(blocks.size()-1);
 			elsebody = reverseParseTypeValueVar(elsebody);
 			out.println("\tbr label %if.end"+ifcnt);
 			out.println();
 			out.println("if.end"+ifcnt+":");
+			blocks.add("if.end"+ifcnt);
 			out.println("\t%"+(++varCount)+" = phi "+parseType(e.type)
-				+" ["+ifbody+", %if.then"+ifcnt+"], ["+elsebody+", %if.else"+ifcnt+"]");
+				+" ["+ifbody+", %"+ifbodylabel+"], ["+elsebody+", %"+elsebodylabel+"]");
 			return parseType(e.type)+" %"+varCount;
 		} else if (expr instanceof AST.static_dispatch) {
 			AST.static_dispatch e = (AST.static_dispatch) expr;
-			String caller = printExpr(cname, method, e.caller, changedFormals, out);
+			String caller = printExpr(cname, method, e.caller, changedFormals, blocks, out);
 			List<String> actuals = new ArrayList<>();
 			for (AST.expression actual : e.actuals) {
-				String a = printExpr(cname, method, actual, changedFormals, out);
+				String a = printExpr(cname, method, actual, changedFormals, blocks, out);
 				actuals.add(a);
 			}
 			ifCount++;
@@ -448,12 +467,14 @@ public class Codegen{
 			out.println("\tbr i1 %"+varCount+", label %if.then"+ifCount+", label %if.else"+ifCount);
 			out.println();
 			out.println("if.then"+ifCount+":");
+			blocks.add("if.then"+ifCount);
 			out.println("\t%"+(++varCount)+" = bitcast [25 x i8]* @Abortdispvoid to [1024 x i8]*");
 			out.println("\t%"+(++varCount)+" = call %class.IO* @_ZN2IO10out_string( %class.IO* null, [1024 x i8]* %"+(varCount-1)+")");
 			out.println("\tcall void @exit(i32 1)");
 			out.println("\tbr label %if.else"+ifCount);
 			out.println();
 			out.println("if.else"+ifCount+":");
+			blocks.add("if.else"+ifCount);
 			String funcname = "@_ZN"+e.typeid.length()+e.typeid+e.name.length()+e.name;
 			ClassInfo ci2 = classTable.classinfos.get(reverseParseType(reverseParseTypeValue(caller)));
 			while (!reverseParseTypeValue(caller).equals(parseType(e.typeid))) {
@@ -593,7 +614,7 @@ public class Codegen{
 			+ "entry:\n"
 			+ "\t%0 = call i8* @malloc( i64 1024 )\n"
 			+ "\t%retval = bitcast i8* %0 to [1024 x i8]*\n"
-			+ "\t%1 = call i32 (i8*, ...) @scanf( i8* bitcast ( [7 x i8]* @instrformatstr to i8* ), [1024 x i8]* %retval )\n"
+			+ "\t%1 = call i32 (i8*, ...) @scanf( i8* bitcast ( [3 x i8]* @strformatstr to i8* ), [1024 x i8]* %retval )\n"
 			+ "\tret [1024 x i8]* %retval\n"
 			+ "}\n");
 	

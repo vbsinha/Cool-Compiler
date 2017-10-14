@@ -11,6 +11,7 @@ class A {
 			while 0 < n loop {
 				value <- value * n;
 				n <- n-1;
+				--new IO@IO.out_int(n);
 			} pool;
 			value;
 		} fi
@@ -72,4 +73,5 @@ class Main {
 		} fi fi;
 		new Object;
 	}};
+	--main() : Object {new Object};
 };
