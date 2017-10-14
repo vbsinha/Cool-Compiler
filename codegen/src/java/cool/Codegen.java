@@ -383,7 +383,7 @@ public class Codegen{
 	        }
 			if (attri == -1) {
 				if (changedFormals.indexOf(e.name) == -1) {
-					out.println("%"+e.name+".addr = alloca i32, align 4");
+					out.println("%"+e.name+".addr = alloca "+type+", align 4");
 					changedFormals.add(e.name);
 				}
 				out.println("\tstore "+e1+", "+type+"* %"+e.name+".addr, align 4");
