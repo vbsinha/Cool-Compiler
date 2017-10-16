@@ -16,7 +16,6 @@ public class Codegen{
     
 	public Codegen(AST.program program, PrintWriter out){
 		//Write Code generator code here
-        out.println("; I am a comment in LLVM-IR. Feel free to remove me.");
         printHeaders(out);
         printClasses(program.classes, out);
         printMainFunc(out);
@@ -24,6 +23,7 @@ public class Codegen{
         out.println(globalStrings);
 	}
 
+	// Print main function that creates object of Main class and calls main function
 	private void printMainFunc(PrintWriter out) {
 		out.println("define i32 @main() {\n"
 			+"entry:\n"
@@ -66,9 +66,12 @@ public class Codegen{
 		q.offer("Object"); // Add root Class
 		while(q.isEmpty() == false){
 			String c = q.poll();
+			// Add classes to classTable (object of ClassInfoTable)
 			if (!c.equals("Object") && !c.equals("IO")) 
 				classTable.insert(astClasses.get(c));
+			// Print the code related to class
 			printClass(c, out);
+			// Add children to BFS queue
 			for (String child : graph.get(c)){
 				q.offer(child);
 			}
@@ -81,7 +84,9 @@ public class Codegen{
 		q.offer("Object"); // Add root Class
 		while(q.isEmpty() == false){
 			String c = q.poll();
+			// Print all the methods in the class
 			printClassMethods(c, out);
+			// Add children to BFS queue
 			for (String child : graph.get(c)){
 				q.offer(child);
 			}
@@ -99,6 +104,7 @@ public class Codegen{
 		}
 
 	    ClassInfo ci = classTable.classinfos.get(c);
+	    // Print all the attributes
 	    String attrsStr = "";
 	    for (String a : ci.attrList) {
 	    	if (a.equals("_Par")) {
@@ -112,6 +118,7 @@ public class Codegen{
 	    out.println("%class."+c+" = type { " + attrsStr + " }");
 	}
 
+	// Returns type equivalent in LLVM_IR
 	String parseType(String t){
 		if (t.equals("Int") || t.equals("Bool"))
     		return "i32";
@@ -122,6 +129,7 @@ public class Codegen{
     	}
 	}
 
+	// Return type in cool given return type in LLVM-IR
 	String reverseParseType(String t){
 		if (t.equals("i32")) {
 			System.out.println("I will never come here reverseParseType");
@@ -133,6 +141,7 @@ public class Codegen{
 		}
 	}
 
+	// Return type given in format "type %var"
 	String reverseParseTypeValue(String t) {
 		if (t.length() > 12 && t.substring(0, 12).equals("[1024 x i8]*")) {
 			return "[1024 x i8]*";
@@ -141,17 +150,20 @@ public class Codegen{
 		}
 	}
 
+	// Return var given in format "type %var"
 	String reverseParseTypeValueVar(String t) {
 		String[] vals = t.split(" ");
 		return vals[vals.length-1];
 	}
 
-	// Print the constructor of te classes and print th inbuilt functions for Object, String, IO, Int, Bool
+	// Print the constructor of te classes and print the inbuilt functions for Object, IO
 	void printClassMethods(String c, PrintWriter out){
+		// Print methods for Object
 		if (c.equals("Object")) {
 			printObjectMethods(out);
 			return;
 		}
+		// Print methods for IO
 		if (c.equals("IO")) {
 			printIOMethods(out);
 			return;
@@ -159,6 +171,7 @@ public class Codegen{
 
 	    ClassInfo ci = classTable.classinfos.get(c);
 
+	    // print constructor for each class
 	    String formals = parseType(c)+" %self";
 	    out.println("define i32 @_ZN"+c.length()+c+8+"__cons__( "+formals+" ) {");
 	    out.println("entry:");
@@ -167,6 +180,7 @@ public class Codegen{
         ifCount = -1;
         List<String> blocks = new ArrayList<>();
 	    for (Map.Entry<String, AST.attr> entry : ci.attrMap.entrySet()) {
+	    	// Add all assignements for attributes in constructor
 	    	AST.attr a = entry.getValue();
 	    	if (!(a.value instanceof AST.no_expr)) {
 		    	AST.assign exp = new AST.assign(a.name, a.value, 0);
@@ -203,6 +217,7 @@ public class Codegen{
 			caller = par+"* %"+varCount;
 			ci2 = classTable.classinfos.get(ci2.parent);
 		}
+		// Print LLVM-IR to add size and type_name in the object attribue of the current class
 		out.println("\t%"+(++varCount)+" = getelementptr inbounds %class.Object, %class.Object* "+reverseParseTypeValueVar(caller)+", i32 0, i32 0");
 		out.println("\tstore i32 "+ci.size+", i32* %"+varCount);
 		String ty = "["+(c.length()+1)+" x i8]";
@@ -213,6 +228,7 @@ public class Codegen{
 		out.println("\tret i32 0");
 	    out.println("}\n");
 	    
+	    // Print all other methods
 	    for (Map.Entry<String, AST.method> entry : ci.methodMap.entrySet()) {
 	    	AST.method m = entry.getValue();
 	    	formals = "%class."+c+"* %self";
@@ -220,8 +236,11 @@ public class Codegen{
 	    		formals += ", "+parseType(f.typeid)+" %"+f.name;
 	    	}
 	    	blocks.clear();
+	    	// Set return type for main function in Main class
 	    	if (c.equals("Main") && entry.getKey().equals("main"))
 	    		mainReturnType = parseType(m.typeid);
+
+	    	// start defining the function
 	        out.println("define "+parseType(m.typeid)+" "+ci.methodName.get(entry.getKey())+"( "+formals+" )" + "{");
 	        out.println("entry:");
 	        blocks.add("entry");
@@ -229,14 +248,17 @@ public class Codegen{
 	        loopCount = -1;
 	        ifCount = -1;
 	        List<String> changedFormals = new ArrayList<>();
+	        // Allot all formals in the stack
 			for (AST.formal f : m.formals) {
 				String type = parseType(f.typeid);
 				out.println("%"+f.name+".addr = alloca "+type+", align 4");
 				changedFormals.add(f.name);
 				out.println("\tstore "+type+" %"+f.name+", "+type+"* %"+f.name+".addr, align 4");
 			}
+			// Print LLVM-IR for body of the function
 	        String ret = printExpr(c, m, m.body, changedFormals, blocks, out);
 	        String rettype = reverseParseTypeValue(ret);
+	        // Print return statement
 	        if (!rettype.equals(parseType(m.typeid))) {
 	        	if (rettype.equals("i32")) {
 	        		out.println("\t%"+(++varCount)+" = call noalias i8* @malloc(i64 8)"); // Object size
@@ -251,21 +273,22 @@ public class Codegen{
 	    }
 	}
 
+	// Print LLVM-IR for expression
 	String printExpr(String cname, AST.method method, AST.expression expr, List<String> changedFormals, List<String> blocks, PrintWriter out) {
 		ClassInfo ci = classTable.classinfos.get(cname);
-		if (expr instanceof AST.bool_const) {
+		if (expr instanceof AST.bool_const) { // Bool constant
 			AST.bool_const e = (AST.bool_const) expr;
 			return "i32 " + (e.value ? 1 : 0);
-		} else if (expr instanceof AST.string_const) {
+		} else if (expr instanceof AST.string_const) { // String constant
 			AST.string_const e = (AST.string_const) expr;
 			String ty = "["+(e.value.length()+1)+" x i8]";
 			globalStrings += "@.str"+(strCount++)+" = private unnamed_addr constant "+ty+" c\""+e.value+"\\00\", align 1\n";
 			out.println("\t%"+(++varCount)+" = bitcast "+ty+"* @.str"+(strCount-1)+" to [1024 x i8]*");
 			return "[1024 x i8]* %"+varCount;
-		} else if (expr instanceof AST.int_const) {
+		} else if (expr instanceof AST.int_const) { // Int constant
 			AST.int_const e = (AST.int_const) expr;
 			return "i32 " + e.value;
-		} else if (expr instanceof AST.object) {
+		} else if (expr instanceof AST.object) { // Object name, can be attribute or formal
 			AST.object e = (AST.object) expr;
 			int attri = ci.attrList.indexOf(e.name);
 			for (AST.formal f : method.formals) {
@@ -288,39 +311,41 @@ public class Codegen{
 			out.println("\t%"+(++varCount)+" = getelementptr inbounds "+parseTypeName+", "+parseTypeName+"* %self, i32 0, i32 "+attri);
 			out.println("\t%"+(++varCount)+" = load "+parseType(e.type)+", "+parseType(e.type)+"* %"+(varCount-1)+", align 4");
 			return parseType(e.type)+" %"+varCount;
-		} else if (expr instanceof AST.comp) {
+		} else if (expr instanceof AST.comp) { // Complement operator
+			// For each of the operators first we peint LLVM-IR for its operands
 			AST.comp e = (AST.comp) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = sub nsw i32 1, " + e1.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.eq) {
+		} else if (expr instanceof AST.eq) { // Equal operator
 			AST.eq e = (AST.eq) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp eq i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.leq) {
+		} else if (expr instanceof AST.leq) { // Less or equal operator
 			AST.leq e = (AST.leq) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp sle i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.lt) {
+		} else if (expr instanceof AST.lt) { // Less than
 			AST.lt e = (AST.lt) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp slt i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.neg) {
+		} else if (expr instanceof AST.neg) { // Negation operator
 			AST.neg e = (AST.neg) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = sub nsw i32 0, " + e1.substring(4));
-		} else if (expr instanceof AST.divide) {
+		} else if (expr instanceof AST.divide) { // Divide operator
 			AST.divide e = (AST.divide) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp eq i32 0, "+e2.substring(4));
 			ifCount++;
+			// Also check for devide by zero, runtime exit
 			out.println("\tbr i1 %"+varCount+", label %if.then"+ifCount+", label %if.else"+ifCount);
 			out.println();
 			out.println("if.then"+ifCount+":");
@@ -334,30 +359,30 @@ public class Codegen{
 			blocks.add("if.else"+ifCount);
 			out.println("\t%"+(++varCount)+" = sdiv i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.mul) {
+		} else if (expr instanceof AST.mul) { // Multiply operator
 			AST.mul e = (AST.mul) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = mul nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.sub) {
+		} else if (expr instanceof AST.sub) { // Subtract operator
 			AST.sub e = (AST.sub) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = sub nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.plus) {
+		} else if (expr instanceof AST.plus) { // Add operator
 			AST.plus e = (AST.plus) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			String e2 = printExpr(cname, method, e.e2, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = add nsw i32 " + e1.substring(4) + ", " + e2.substring(4));
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.isvoid) {
+		} else if (expr instanceof AST.isvoid) { // isvoid operator
 			AST.isvoid e = (AST.isvoid) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			out.println("\t%"+(++varCount)+" = icmp eq "+e1+", null");
 			return "i32 %"+varCount;
-		} else if (expr instanceof AST.new_) {
+		} else if (expr instanceof AST.new_) { // New expression, calls constructor
 			AST.new_ e = (AST.new_) expr;
 			String type = parseType(e.typeid);
 			// out.println("\t%"+(++varCount)+" = alloca "+type+", align 4");
@@ -367,10 +392,11 @@ public class Codegen{
 			out.println("\t%"+(++varCount)+" = call i32 @_ZN"+e.typeid.length()+e.typeid+8+"__cons__( "+type+" %"+(varCount-1)+" )");
 			// out.println("\tstore "+type+" %"+varCount+", "+type+"* %"+(varCount-2)+", align 4");
 			return type+" %"+(varCount-1);
-		} else if (expr instanceof AST.assign) {
+		} else if (expr instanceof AST.assign) { // Assignment
 			AST.assign e = (AST.assign) expr;
 			String e1 = printExpr(cname, method, e.e1, changedFormals, blocks, out);
 			int attri = ci.attrList.indexOf(e.name);
+			// figure out assign to formal or attr
 			if (method != null) {
 				for (AST.formal f : method.formals) {
 					if (f.name.equals(e.name)) {
@@ -383,6 +409,7 @@ public class Codegen{
 			String stype = parseType(cname);
 			stype = stype.substring(0, stype.length()-1);
 			String e1type = reverseParseTypeValue(e1);
+			// Bitcast of types not same
 	        if (!e1type.equals(type)) {
 	        	if (e1type.equals("i32")) {
 	        		out.println("\t%"+(++varCount)+" = call noalias i8* @malloc(i64 8)"); // Object size
@@ -392,6 +419,7 @@ public class Codegen{
 	        	}
 	        	e1 = type+" %"+varCount;
 	        }
+	        // If formal was reassigned
 			if (attri == -1) {
 				if (changedFormals.indexOf(e.name) == -1) {
 					out.println("%"+e.name+".addr = alloca "+type+", align 4");
@@ -404,14 +432,15 @@ public class Codegen{
 				out.println("\tstore "+e1+", "+type+"* %"+varCount+", align 4");
 				return e1;
 			}
-		} else if (expr instanceof AST.block) {
+		} else if (expr instanceof AST.block) { // Block statement
 			AST.block e = (AST.block) expr;
 			String re = "";
 			for (AST.expression ex : e.l1) {
 				re = printExpr(cname, method, ex, changedFormals, blocks, out);
 			}
 			return re;
-		} else if (expr instanceof AST.loop) {
+		} else if (expr instanceof AST.loop) { // Loops
+			// Add blocks required for cond and loop block
 			AST.loop e = (AST.loop) expr;
 			int loopcnt = ++loopCount;
 			out.println("\tbr label %loop.cond"+loopcnt);
@@ -429,7 +458,8 @@ public class Codegen{
 			out.println("loop.end"+loopcnt+":");
 			blocks.add("loop.end"+loopcnt);
 			return body;
-		} else if (expr instanceof AST.cond) {
+		} else if (expr instanceof AST.cond) { // If condition
+			// Add required blocks for cond, if.then, if.else
 			AST.cond e = (AST.cond) expr;
 			int ifcnt = ++ifCount;
 			String pred = printExpr(cname, method, e.predicate, changedFormals, blocks, out);
@@ -454,14 +484,16 @@ public class Codegen{
 			out.println("\t%"+(++varCount)+" = phi "+parseType(e.type)
 				+" ["+ifbody+", %"+ifbodylabel+"], ["+elsebody+", %"+elsebodylabel+"]");
 			return parseType(e.type)+" %"+varCount;
-		} else if (expr instanceof AST.static_dispatch) {
+		} else if (expr instanceof AST.static_dispatch) { // Static dispatch
 			AST.static_dispatch e = (AST.static_dispatch) expr;
 			String caller = printExpr(cname, method, e.caller, changedFormals, blocks, out);
+			// Print LLVM-IR for parameters
 			List<String> actuals = new ArrayList<>();
 			for (AST.expression actual : e.actuals) {
 				String a = printExpr(cname, method, actual, changedFormals, blocks, out);
 				actuals.add(a);
 			}
+			// Check if dispatch to void
 			ifCount++;
 			out.println("\t%"+(++varCount)+" = icmp eq "+caller+", null");
 			out.println("\tbr i1 %"+varCount+", label %if.then"+ifCount+", label %if.else"+ifCount);
@@ -475,6 +507,7 @@ public class Codegen{
 			out.println();
 			out.println("if.else"+ifCount+":");
 			blocks.add("if.else"+ifCount);
+			// Call the required function
 			String funcname = "@_ZN"+e.typeid.length()+e.typeid+e.name.length()+e.name;
 			ClassInfo ci2 = classTable.classinfos.get(reverseParseType(reverseParseTypeValue(caller)));
 			while (!reverseParseTypeValue(caller).equals(parseType(e.typeid))) {
@@ -491,12 +524,13 @@ public class Codegen{
 				actualsStr += ", " + actuals.get(i);
 			out.println("\t%"+(++varCount)+" = call "+parseType(e.type)+" "+funcname+"("+actualsStr+")");
 			return parseType(e.type)+" %"+varCount;
-		} else {
+		} else { // This should never happen
 			System.out.println("I will never come here");
 		}
 		return "";
 	}
 
+	// Print header information, declare the functions
 	void printHeaders(PrintWriter out) {
 		out.println("target datalayout = \"e-m:e-i64:64-f80:128-n8:16:32:64-S128\"");
 		out.println("target triple = \"x86_64-unknown-linux-gnu\"");
@@ -516,6 +550,7 @@ public class Codegen{
 			+ "@intformatstr = private unnamed_addr constant [3 x i8] c\"%d\\00\", align 1\n");
 	}
 
+	// Print methods related to object
 	void printObjectMethods(PrintWriter out) {
 		out.println("define i32 @_ZN6Object8__cons__( %class.Object* %self ) noreturn {\n"
 			+ "entry:\n"
@@ -535,22 +570,9 @@ public class Codegen{
 			+ "\t%retval = call [1024 x i8]* @_ZN6String4copy( [1024 x i8]* %1 )\n"
 			+ "\tret [1024 x i8]* %retval\n"
 			+ "}\n");
-
-		// out.println("define %class.Object* @_ZN6Object4copy( %class.Object* %self ) {\n"
-		// 	+ "entry:\n"
-		// 	+ "\t%call = call i8* @malloc( i64 32 )\n"
-		// 	+ "\t%retval = bitcast i8* %call to %class.Object*\n"
-		// 	+ "\t%0 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 0\n"
-		// 	+ "\tstore i32 0, i32* %0\n"
-		// 	+ "\t%1 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 1\n"
-		// 	+ "\tstore i8* bitcast ( [3 x i8*]* @VTObject to i8*), i8** %1\n"
-		// 	+ "\t%2 = getelementptr inbounds %class.Object, %class.Object* %retval, i32 0, i32 2\n"
-		// 	+ "\t%3 = getelementptr inbounds %class.Object, %class.Object* %self, i32 0, i32 2\n"
-		// 	+ "\tcall void @_ZN6Object4copyTo( %classbaseObject* %2, %classbaseObject* %3 )\n"
-		// 	+ "\tret %class.Object* %retval\n"
-		// 	+ "}\n");
 	}
 
+	// Print methods related to string
 	void printStringMethods(PrintWriter out) {
 		out.println("define i32 @_ZN6String6length( [1024 x i8]* %self ) {\n"
 			+ "\tentry:\n"
@@ -592,6 +614,7 @@ public class Codegen{
 			+ "}\n");
 	}
 
+	// Print IO methods
 	void printIOMethods(PrintWriter out) {
 		out.println("define i32 @_ZN2IO8__cons__( %class.IO* %self ) noreturn {\n"
 			+ "entry:\n"
